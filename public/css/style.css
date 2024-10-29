@@ -24,6 +24,7 @@ body {
     opacity: 1;
     width: 50%;
     background-color: white;
+    padding-bottom: 2%;
 }
 
 .popup-container .popup-box .popup-box-contents{

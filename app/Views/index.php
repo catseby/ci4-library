@@ -6,6 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Library</title>
     <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" type="text/css" href="./assets/jsonform/deps/opt/bootstrap.css" />
+    <script type="text/javascript" src="./assets/jsonform/deps/jquery.min.js"></script>
+    <script type="text/javascript" src="./assets/jsonform/deps/underscore.js"></script>
+    <script type="text/javascript" src="./assets/jsonform/deps/opt/jsv.js"></script>
+    <script type="text/javascript" src="./assets/jsonform/lib/jsonform.js"></script>
 </head>
 
 <body>
@@ -32,11 +37,7 @@
             <button class="x-button">x</button>
             <div class="popup-box-contents">
             <h2>Add Book</h2>
-            <ul class="form-nav">
-                <li><a href="">Book Desc.</a></li>
-                <li><a href="">Images</a></li>
-                <li><a href="">Tags</a></li>
-            </ul>
+            <form action="" id="popup-form"></form>
             </div>
         </div>
     </div>
