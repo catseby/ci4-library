@@ -21,24 +21,24 @@ $("#popup-form").jsonForm({
         isbn: {
           type: "string",
           title: "Book ISBN",
-          required: true
+          required: true,
         },
         title: {
           type: "string",
           title: "Book Title",
-          required: true
+          required: true,
         },
         author: {
           type: "string",
           title: "Book Author",
-          required: true
+          required: true,
         },
         category: {
           type: "string",
           title: "Book Category",
-          required: true
+          enum: [],
         },
-      }
+      },
     },
     favorite_tv: {
       type: "string",
@@ -83,7 +83,7 @@ $("#popup-form").jsonForm({
               type: "tab",
               items: [
                 {
-                  key: "book_desc"
+                  key: "book_desc",
                 },
               ],
             },
@@ -128,12 +128,46 @@ $("#popup-form").jsonForm({
       ],
     },
   ],
-  onSubmit : function (errors,values) {
+  onSubmit: function (errors, values) {
+    console.log(values);
     if (errors) {
       console.log(errors);
-    } else{
+    } else {
       console.log(values);
     }
   },
 });
-console.log("added");
+
+function fetchCategories(selectedCategory) {
+
+  $.ajax({
+    url: "http://localhost:8080/categories",
+    method: "get",
+    contentType: false,
+    processData: false,
+    success: function (data) {
+      var categoryDropdown = $('[name="book_desc.category"]');
+      categoryDropdown.attr("multiple", "multiple").select2();
+      categoryDropdown.empty();
+
+      for (let i = 0; i < data.categories.length; i++) {
+        let category = data.categories[i];
+        var option = $("<option>", {
+          value: i,
+          text: category.category_name,
+        });
+        if (
+          Array.isArray(selectedCategory) && selectedCategory.includes(category.category_name)){
+          option.attr("selected", "selected");
+        }
+        categoryDropdown.append(option);
+      }
+
+      document.getElementById("jsonform-1-elt-book_desc.category").classList.add("hidden");
+      // categoryDropdown.trigger("change");
+      // categoryDropdown.select2().next(".select2-container").css("width", "100%");
+    },
+  });
+}
+
+fetchCategories([]);

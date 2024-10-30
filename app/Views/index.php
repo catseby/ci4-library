@@ -11,6 +11,11 @@
     <script type="text/javascript" src="./assets/jsonform/deps/underscore.js"></script>
     <script type="text/javascript" src="./assets/jsonform/deps/opt/jsv.js"></script>
     <script type="text/javascript" src="./assets/jsonform/lib/jsonform.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+    
 </head>
 
 <body>
