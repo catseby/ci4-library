@@ -13,7 +13,7 @@ body {
     position: absolute;
     width: 100%;
     height: 100%;
-    background: rgba(0, 250, 154, 0.2);/* Green background with 30% opacity */
+    background: rgba(0, 0, 0, 0.2);/* Green background with 30% opacity */
     display: flex;
     justify-content: center;
     align-items: center;

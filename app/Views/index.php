@@ -24,7 +24,7 @@
 
         <button id="add-button" class="add-button">Add Book</button>
 
-        <table>
+        <table id="table">
             <tr>
                 <th>ID</th>
                 <th>ISBN</th>
@@ -41,11 +41,12 @@
         <div class="popup-box">
             <button class="x-button">x</button>
             <div class="popup-box-contents">
-            <h2>Add Book</h2>
+            <h2 id="popup-title">Add Book</h2>
             <form action="" id="popup-form"></form>
             </div>
         </div>
     </div>
+
 
     <script src="./js/script.js"></script>
 </body>

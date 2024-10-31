@@ -218,7 +218,7 @@ void 0===window.kintMicrotimeInitialized&&(window.kintMicrotimeInitialized=1,win
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.1/underscore-min.js"></script>
 <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js" type="text/javascript"></script>
-<script src="/lib/jsonform.js"  type="text/javascript" ></script>
+<script type="text/javascript" src="./assets/jsonform/lib/jsonform.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 
@@ -503,14 +503,17 @@ function render_form(data) {
 
 function populateCategoryDropdownForForm(selectedCategory) {
     $.ajax({
-        url: "https://leonards1.alternar.link/categories/getCategories",
-        type: "GET",
+        url: "http://localhost:8080/categories",
+        type: "get",
         dataType: "json",
         success: function(data) {
+            console.log("wadafaker");
             var categoryDropdown = $('[name="book_category"]');
             categoryDropdown.attr('multiple', 'multiple').select2(); 
             categoryDropdown.empty();
-            data.forEach(function(category) {
+            for (let i = 0; i < data.categories.length; i++) {
+                let category = data.categories[i];
+                console.log(category);
                 var option = $('<option>', {
                     value: category.category_name,
                     text: category.category_name
@@ -519,12 +522,13 @@ function populateCategoryDropdownForForm(selectedCategory) {
                     option.attr('selected', 'selected');
                 }
                 categoryDropdown.append(option);
-            });
+            }
             categoryDropdown.trigger('change'); 
             categoryDropdown.select2().next(".select2-container").css("width", "100%"); 
         },
         error: function(jqXHR, textStatus, errorThrown) {
-            console.log(jqXHR);
+            console.log("wadafak");
+            console.log(errorThrown);
             alert('Error getting categories from server');
         }
     });
