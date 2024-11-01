@@ -113,11 +113,22 @@ var form = [
                   image.width = 100;
 
                   input.type = "text";
-                  input.value = file.name.replace(/\.[^/.]+$/, "");
+                  input.value = file.name
                   input.placeholder = "Image Title";
                   input.onchange = function () {
-                    //file.file_name = input.value;
-                    console.log(file);
+                    let parent = new_div.parentNode;
+                    let index = Array.prototype.indexOf.call(
+                      parent.children,
+                      new_div
+                    );
+
+                    function renameFile(originalFile, newName) {
+                      return new File([originalFile], newName, {
+                          type: originalFile.type,
+                          lastModified: originalFile.lastModified,
+                      });
+                  }
+                    file_array[index] = renameFile(file_array[index],input.value);
                   };
 
                   button.innerHTML = "Remove";
@@ -185,7 +196,7 @@ function addBook(values) {
   formData.append("author", values.book_desc.author);
   formData.append("category", JSON.stringify(values.book_desc.category));
 
-  for (let i = 0; i < file_array.length; i++){
+  for (let i = 0; i < file_array.length; i++) {
     formData.append("files[]", file_array[i]);
   }
 
@@ -218,6 +229,12 @@ function editBook(id, values) {
   formData.append("author", values.book_desc.author);
   formData.append("category", JSON.stringify(values.book_desc.category));
 
+  for (let i = 0; i < file_array.length; i++) {
+    formData.append("files[]", file_array[i]);
+  }
+
+  file_array = [];
+
   $.ajax({
     url: "http://localhost:8080/books/" + id,
     type: "post",
@@ -246,8 +263,6 @@ function fetchBooks() {
     success: function (data) {
       for (let i = 0; i < data.books.length; i++) {
         let book = data.books[i];
-
-        console.log(book.category);
 
         let parseBooks = JSON.parse(book.category);
 
@@ -279,8 +294,22 @@ function fetchBooks() {
           "</td>" +
           "<td>" +
           book_categories +
-          "</td>" +
-          "<td>No Images</td>";
+          "</td>";
+
+        let image_td = document.createElement("td");
+
+        for (let j = 0; j < data.images.length; j++) {
+          let image = data.images[j];
+          if (image.book_id == book.id) {
+            let new_image = document.createElement("img");
+            new_image.width = 64;
+            new_image.src = "./uploads/" + image.image;
+
+            image_td.appendChild(new_image);
+          }
+        }
+
+        tr.appendChild(image_td);
 
         let actions = document.createElement("td");
 
@@ -314,6 +343,78 @@ function fetchBooks() {
               editBook(book.id, values);
             },
           });
+
+          file_array = [];
+          for (let j = 0; j < data.images.length; j++) {
+            let file = data.images[j];
+
+            if (file.book_id == book.id) {
+              async function createFileFromUrl(url, fileName) {
+                const resp = await fetch(url); // Fetch the image data
+                const blob = await resp.blob(); // Convert response to Blob
+                const file = new File([blob], fileName, {
+                  // Create File from Blob
+                  type: blob.type,
+                });
+                return file;
+              }
+
+
+              createFileFromUrl("./uploads/" + file.image, file.image)
+                .then((new_file) => {
+                  file_array.push(new_file);
+                })
+                .catch((error) => console.error("Error creating file:", error));
+
+              console.log(file_array);
+
+              let new_div = document.createElement("div");
+              let image = document.createElement("img");
+              let input = document.createElement("input");
+              let button = document.createElement("button");
+
+              image.width = 100;
+              image.src = "./uploads/" + file.image;
+
+              input.type = "text";
+              input.value = file.image
+              input.placeholder = "Image Title";
+              input.onchange = function () {
+                let parent = new_div.parentNode;
+                let index = Array.prototype.indexOf.call(
+                  parent.children,
+                  new_div
+                );
+                
+                function renameFile(originalFile, newName) {
+                  return new File([originalFile], newName, {
+                      type: originalFile.type,
+                      lastModified: originalFile.lastModified,
+                  });
+              }
+                file_array[index] = renameFile(file_array[index],input.value);
+                console.log(file_array[index]);
+              };
+
+              button.innerHTML = "Remove";
+
+              button.onclick = function () {
+                let parent = new_div.parentNode;
+                let index = Array.prototype.indexOf.call(
+                  parent.children,
+                  new_div
+                );
+                file_array.splice(index, 1);
+                new_div.remove();
+              };
+
+              new_div.appendChild(image);
+              new_div.appendChild(input);
+              new_div.appendChild(button);
+
+              document.getElementById("image-div").appendChild(new_div);
+            }
+          }
 
           seedCategory(JSON.parse(book.category));
         };
