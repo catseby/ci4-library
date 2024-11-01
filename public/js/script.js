@@ -97,6 +97,11 @@ var form = [
                 onChange: function () {
                   let file =
                     document.getElementsByName("image.file")[0].files[0];
+                  console.log(
+                    document.getElementsByName("image.file")[0].files
+                  );
+
+                  //file.file_name = file.name.replace(/\.[^/.]+$/, "");
 
                   file_array.push(file);
 
@@ -110,6 +115,10 @@ var form = [
                   input.type = "text";
                   input.value = file.name.replace(/\.[^/.]+$/, "");
                   input.placeholder = "Image Title";
+                  input.onchange = function () {
+                    //file.file_name = input.value;
+                    console.log(file);
+                  };
 
                   button.innerHTML = "Remove";
 
@@ -175,7 +184,11 @@ function addBook(values) {
   formData.append("title", values.book_desc.title);
   formData.append("author", values.book_desc.author);
   formData.append("category", JSON.stringify(values.book_desc.category));
-  formData.append("files", JSON.stringify(file_array));
+
+  for (let i = 0; i < file_array.length; i++){
+    formData.append("files[]", file_array[i]);
+  }
+
   file_array = [];
 
   $.ajax({

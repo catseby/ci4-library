@@ -7,6 +7,7 @@ use CodeIgniter\HTTP\ResponseInterface;
 
 use App\Models\BookModel;
 use App\Models\CategoryModel;
+use App\Models\ImageModel;
 
 class BookController extends BaseController
 {
@@ -34,6 +35,7 @@ class BookController extends BaseController
     }
 
     public function add() {
+
         $data = [
             'isbn' => $this->request->getPost('isbn'),
             'title' => $this->request->getPost('title'),
@@ -44,6 +46,23 @@ class BookController extends BaseController
 
         $bookModel = new BookModel();
         $bookModel->insert($data);
+
+        $id = $bookModel->getInsertID();
+        $files = $this->request->getFiles();
+
+        foreach ($files['files'] as $file) {
+            $file_name = $file->getRandomName();
+            
+            $file_data = [
+                'book_id' => $id,
+                'image' => $file_name,
+                'created_at' => date('Y-m-d H:i:s'),
+            ];
+
+            $file->move('uploads', $file_name);
+            $imageModel = new ImageModel();
+            $imageModel->insert($file_data);
+        }
     }
 
 public function edit($id) {
