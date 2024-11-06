@@ -9,6 +9,14 @@ body {
     margin-left: 15%;
 }
 
+.filter-div{
+    width: 50%;
+}
+
+.filter-div select{
+    width: 100%;
+}
+
 .popup-container {
     position: absolute;
     width: 100%;

@@ -45,6 +45,7 @@ class BookController extends BaseController
             'title' => $this->request->getPost('title'),
             'author' => $this->request->getPost('author'),
             'category' => $this->request->getPost('category'),
+            'tags' => $this->request->getPost('tags'),
             'created_at' => date('Y-m-d H:i:s')
         ];
 
@@ -88,6 +89,7 @@ public function update($id) {
         'title' => $this->request->getPost('title'),
         'author' => $this->request->getPost('author'),
         'category' => $this->request->getPost('category'),
+        'tags' => $this->request->getPost('tags'),
         'updated_at' => date('Y-m-d H:i:s')
     ];
 

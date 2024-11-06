@@ -31,6 +31,9 @@ class BookTable extends Migration
             'category' => [
                 'type' => 'JSON',
             ],
+            'tags' => [
+                'type' => 'JSON',
+            ],
             'created_at' => [
                 'type' => 'DATETIME',
                 'null' => true,

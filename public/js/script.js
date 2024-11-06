@@ -16,6 +16,8 @@ document.getElementById("add-button").onclick = function (evt) {
     },
   });
 
+  $('[name="image.file"]').attr("multiple", "multiple");
+
   seedCategory([]);
 
   let x = add.querySelector(".x-button");
@@ -66,8 +68,11 @@ var schema = {
     },
   },
   tags: {
-    type: "object",
+    type: "array",
     title: " ",
+    items: {
+      type: "string",
+    },
   },
 };
 
@@ -95,64 +100,71 @@ var form = [
               {
                 key: "image",
                 onChange: function () {
-                  let file =
-                    document.getElementsByName("image.file")[0].files[0];
-                  console.log(
-                    document.getElementsByName("image.file")[0].files
-                  );
+                  for (
+                    let i = 0;
+                    i <
+                    document.getElementsByName("image.file")[0].files.length;
+                    i++
+                  ) {
+                    let file =
+                      document.getElementsByName("image.file")[0].files[i];
 
-                  //file.file_name = file.name.replace(/\.[^/.]+$/, "");
+                    //file.file_name = file.name.replace(/\.[^/.]+$/, "");
 
-                  file_array.push(file);
+                    file_array.push(file);
 
-                  let new_div = document.createElement("div");
-                  let image = document.createElement("img");
-                  let input = document.createElement("input");
-                  let button = document.createElement("button");
+                    let new_div = document.createElement("div");
+                    let image = document.createElement("img");
+                    let input = document.createElement("input");
+                    let button = document.createElement("button");
 
-                  image.width = 100;
+                    image.width = 100;
 
-                  input.type = "text";
-                  input.value = file.name
-                  input.placeholder = "Image Title";
-                  input.onchange = function () {
-                    let parent = new_div.parentNode;
-                    let index = Array.prototype.indexOf.call(
-                      parent.children,
-                      new_div
-                    );
+                    input.type = "text";
+                    input.value = file.name;
+                    input.placeholder = "Image Title";
+                    input.onchange = function () {
+                      let parent = new_div.parentNode;
+                      let index = Array.prototype.indexOf.call(
+                        parent.children,
+                        new_div
+                      );
 
-                    function renameFile(originalFile, newName) {
-                      return new File([originalFile], newName, {
+                      function renameFile(originalFile, newName) {
+                        return new File([originalFile], newName, {
                           type: originalFile.type,
                           lastModified: originalFile.lastModified,
-                      });
+                        });
+                      }
+                      file_array[index] = renameFile(
+                        file_array[index],
+                        input.value
+                      );
+                    };
+
+                    button.innerHTML = "Remove";
+
+                    button.onclick = function () {
+                      let parent = new_div.parentNode;
+                      let index = Array.prototype.indexOf.call(
+                        parent.children,
+                        new_div
+                      );
+                      file_array.splice(index, 1);
+                      new_div.remove();
+                    };
+
+                    new_div.appendChild(image);
+                    new_div.appendChild(input);
+                    new_div.appendChild(button);
+
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                      image.src = e.target.result;
+                      document.getElementById("image-div").appendChild(new_div);
+                    };
+                    reader.readAsDataURL(file);
                   }
-                    file_array[index] = renameFile(file_array[index],input.value);
-                  };
-
-                  button.innerHTML = "Remove";
-
-                  button.onclick = function () {
-                    let parent = new_div.parentNode;
-                    let index = Array.prototype.indexOf.call(
-                      parent.children,
-                      new_div
-                    );
-                    file_array.splice(index, 1);
-                    new_div.remove();
-                  };
-
-                  new_div.appendChild(image);
-                  new_div.appendChild(input);
-                  new_div.appendChild(button);
-
-                  const reader = new FileReader();
-                  reader.onload = function (e) {
-                    image.src = e.target.result;
-                    document.getElementById("image-div").appendChild(new_div);
-                  };
-                  reader.readAsDataURL(file);
                 },
               },
               {
@@ -195,6 +207,7 @@ function addBook(values) {
   formData.append("title", values.book_desc.title);
   formData.append("author", values.book_desc.author);
   formData.append("category", JSON.stringify(values.book_desc.category));
+  formData.append("tags", JSON.stringify(values.tags));
 
   for (let i = 0; i < file_array.length; i++) {
     formData.append("files[]", file_array[i]);
@@ -228,6 +241,7 @@ function editBook(id, values) {
   formData.append("title", values.book_desc.title);
   formData.append("author", values.book_desc.author);
   formData.append("category", JSON.stringify(values.book_desc.category));
+  formData.append("tags", JSON.stringify(values.tags));
 
   for (let i = 0; i < file_array.length; i++) {
     formData.append("files[]", file_array[i]);
@@ -255,6 +269,7 @@ function updateBook(values) {}
 
 function fetchBooks() {
   var categories = fetchCategories();
+  console.log(categories);
   $.ajax({
     url: "http://localhost:8080/books",
     method: "get",
@@ -338,11 +353,14 @@ function fetchBooks() {
                 title: book.title,
                 author: book.author,
               },
+              tags: JSON.parse(book.tags),
             },
             onSubmit: function (errors, values) {
               editBook(book.id, values);
             },
           });
+
+          $('[name="image.file"]').attr("multiple", "multiple");
 
           file_array = [];
           for (let j = 0; j < data.images.length; j++) {
@@ -358,7 +376,6 @@ function fetchBooks() {
                 });
                 return file;
               }
-
 
               createFileFromUrl("./uploads/" + file.image, file.image)
                 .then((new_file) => {
@@ -377,7 +394,7 @@ function fetchBooks() {
               image.src = "./uploads/" + file.image;
 
               input.type = "text";
-              input.value = file.image
+              input.value = file.image;
               input.placeholder = "Image Title";
               input.onchange = function () {
                 let parent = new_div.parentNode;
@@ -385,14 +402,14 @@ function fetchBooks() {
                   parent.children,
                   new_div
                 );
-                
+
                 function renameFile(originalFile, newName) {
                   return new File([originalFile], newName, {
-                      type: originalFile.type,
-                      lastModified: originalFile.lastModified,
+                    type: originalFile.type,
+                    lastModified: originalFile.lastModified,
                   });
-              }
-                file_array[index] = renameFile(file_array[index],input.value);
+                }
+                file_array[index] = renameFile(file_array[index], input.value);
                 console.log(file_array[index]);
               };
 
@@ -485,6 +502,36 @@ function seedCategory(selectedCategory) {
   });
 }
 
+function seedCategoryFilter() {
+  $.ajax({
+    url: "http://localhost:8080/categories",
+    method: "get",
+    contentType: false,
+    processData: false,
+    success: function (data) {
+      var categoryFilter = $("#category-filter");
+
+      categoryFilter.attr("multiple", "multiple").select2();
+      categoryFilter.empty();
+
+      console.log(data.categories);
+
+      for (let i = 0; i < data.categories.length; i++) {
+        let category = data.categories[i];
+        var option = $("<option>", {
+          value: i,
+          text: category.category_name,
+        });
+        categoryFilter.append(option);
+      }
+
+      categoryFilter.trigger("change");
+      categoryFilter.select2().next(".select2-container").css("width", "100%");
+    },
+  });
+}
+
+
 function fetchCategories() {
   let arr = [];
   $.ajax({
@@ -502,3 +549,4 @@ function fetchCategories() {
 }
 
 fetchBooks();
+seedCategoryFilter();

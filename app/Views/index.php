@@ -24,6 +24,10 @@
 
         <button id="add-button" class="add-button">Add Book</button>
 
+        <div class="filter-div">
+            <select name="" id="category-filter"></select>
+        </div>
+
         <table id="table">
             <tr>
                 <th>ID</th>
