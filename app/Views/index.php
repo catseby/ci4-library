@@ -25,9 +25,18 @@
         <button id="add-button" class="add-button">Add Book</button>
 
         <div class="filter-div">
-            <select name="" id="category-filter"></select>
+            <br>
+            <label for="category-filter">Filter By Category:</label>
+            <select name="category-filter" id="category-filter"></select>
         </div>
 
+        <div class="tag-filter-div">
+            <br>
+            <label for="tag-filter">Filter By Tags:</label><br>
+            <span class="tag-filter" id="tag-filter" name="tag-filter"></span>
+        </div>
+
+        <br>
         <table id="table">
             <tr>
                 <th>ID</th>

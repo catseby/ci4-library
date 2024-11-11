@@ -29,10 +29,10 @@ class BookTable extends Migration
                 'constraint' => 255,
             ],
             'category' => [
-                'type' => 'JSON',
+                'type' => 'JSONB',
             ],
             'tags' => [
-                'type' => 'JSON',
+                'type' => 'JSONB',
             ],
             'created_at' => [
                 'type' => 'DATETIME',

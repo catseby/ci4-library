@@ -17,6 +17,15 @@ body {
     width: 100%;
 }
 
+.tag-filter button {
+    opacity: 0.5;
+}
+
+
+.tag-filter .tag-toggled {
+    opacity: 1;
+}
+
 .popup-container {
     position: absolute;
     width: 100%;

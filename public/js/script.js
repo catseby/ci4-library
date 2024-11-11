@@ -267,11 +267,28 @@ function editBook(id, values) {
 
 function updateBook(values) {}
 
-function fetchBooks() {
+function fetchBooks(cFilter = [], tFilter = []) {
+  document.getElementById("table").innerHTML =
+    "<tr><th>ID</th><th>ISBN</th><th>Title</th><th>Author</th><th>Category</th><th>Image</th><th>Actions</th></tr>";
   var categories = fetchCategories();
-  console.log(categories);
+  var extra_param = "";
+
+  if (cFilter != null && cFilter.length != 0 && tFilter.length != 0) {
+    let cv = cFilter.join(",");
+    let tv = tFilter.join(",");
+    extra_param = "/?category=" + cv + "&tags=" + tv;
+  } else if (cFilter != null && cFilter.length != 0) {
+    let cv = cFilter.join(",");
+    extra_param = "/?category=" + cv;
+  } else if (tFilter.length != 0) {
+    let tv = tFilter.join(",");
+    extra_param = "/?tags=" + tv;
+  }
+
+  console.log("http://localhost:8080/books" + extra_param);
+
   $.ajax({
-    url: "http://localhost:8080/books",
+    url: "http://localhost:8080/books" + extra_param,
     method: "get",
     contentType: false,
     processData: false,
@@ -527,10 +544,12 @@ function seedCategoryFilter() {
 
       categoryFilter.trigger("change");
       categoryFilter.select2().next(".select2-container").css("width", "100%");
+      document.getElementById("category-filter").onchange = function () {
+        fetchBooks(categoryFilter.val(), selected_tags);
+      };
     },
   });
 }
-
 
 function fetchCategories() {
   let arr = [];
@@ -548,5 +567,51 @@ function fetchCategories() {
   return arr;
 }
 
+var selected_tags = [];
+
+function seedTagFilter() {
+  let tag_filter = document.getElementById("tag-filter");
+  $.ajax({
+    url: "http://localhost:8080/books",
+    method: "get",
+    contentType: false,
+    processData: false,
+    success: function (data) {
+      let taglist = [];
+      for (let i = 0; i < data.books.length; i++) {
+        let tags = JSON.parse(data.books[i].tags);
+
+        for (let j = 0; j < tags.length; j++) {
+          if (taglist.includes(tags[j]) == false) {
+            taglist.push(tags[j]);
+            let tag = document.createElement("button");
+            tag.innerHTML = tags[j];
+            tag_filter.appendChild(tag);
+
+            tag.onclick = function () {
+              if (tag.hasAttribute("selected")) {
+                console.log("unselect");
+                tag.classList.remove("tag-toggled");
+                tag.removeAttribute("selected");
+                selected_tags.splice(selected_tags.indexOf(tags[j]), 1);
+              } else {
+                console.log("select");
+                tag.classList.add("tag-toggled");
+                tag.setAttribute("selected", "");
+                selected_tags.push(tags[j]);
+              }
+
+              console.log(selected_tags);
+
+              fetchBooks($("#category-filter").val(), selected_tags);
+            };
+          }
+        }
+      }
+    },
+  });
+}
+
 fetchBooks();
 seedCategoryFilter();
+seedTagFilter();

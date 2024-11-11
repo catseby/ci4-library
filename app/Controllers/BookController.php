@@ -25,6 +25,55 @@ class BookController extends BaseController
     }
 
     public function fetch() {
+
+        $categories = $this->request->getGet('category');
+        $tags = $this->request->getGet('tags');
+
+        $bookModel = new BookModel();
+
+        $imageModel = new ImageModel();
+        $images = $imageModel->asArray()->findAll();
+
+        if ($categories and $tags) {
+            $books = $bookModel->filterByCategoryAndTags($categories,$tags);
+            
+            return $this->response->setJSON([
+                'error' => false,
+                'books' => $books,
+                'images' => $images,
+            ]);
+        }
+        else if ($categories) {
+            $books = $bookModel->filterByCategory($categories);
+            
+            return $this->response->setJSON([
+                'error' => false,
+                'books' => $books,
+                'images' => $images,
+            ]);
+        }
+        else if ($tags) {
+            $books = $bookModel->filterByTags($tags);
+            
+            return $this->response->setJSON([
+                'error' => false,
+                'books' => $books,
+                'images' => $images,
+            ]);
+        }
+        else {
+            $books = $bookModel->asArray()->findAll();
+
+            return $this->response->setJSON([
+                'error' => false,
+                'books' => $books,
+                'images' => $images,
+            ]);
+        }
+    }
+
+    //--Šitas vienkārši jāpvieno ar parasto fetch() un jaiedod parametri caur link
+    public function fetchFiltered() {
         $bookModel = new BookModel();
         $books = $bookModel->asArray()->findAll();
 
