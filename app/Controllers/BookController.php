@@ -8,6 +8,8 @@ use CodeIgniter\HTTP\ResponseInterface;
 use App\Models\BookModel;
 use App\Models\CategoryModel;
 use App\Models\ImageModel;
+use App\Models\FormTemplateModel;
+
 
 class BookController extends BaseController
 {
@@ -19,6 +21,15 @@ class BookController extends BaseController
             'categories' => $categoryModel->getCategories(),
         ]);
     }
+
+    public function categoryForm() {
+        $ftm = new FormTemplateModel();
+
+        $form = $ftm->getForm('categories');
+
+        return view("form_test",$form);
+    }
+
     public function index()
     {
         return view('index');
@@ -72,20 +83,6 @@ class BookController extends BaseController
         }
     }
 
-    //--Šitas vienkārši jāpvieno ar parasto fetch() un jaiedod parametri caur link
-    public function fetchFiltered() {
-        $bookModel = new BookModel();
-        $books = $bookModel->asArray()->findAll();
-
-        $imageModel = new ImageModel();
-        $images = $imageModel->asArray()->findAll();
-
-        return $this->response->setJSON([
-            'error' => false,
-            'books' => $books,
-            'images' => $images,
-        ]);
-    }
 
     public function add() {
 
