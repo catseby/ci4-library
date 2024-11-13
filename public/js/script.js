@@ -385,10 +385,9 @@ function fetchBooks(cFilter = [], tFilter = []) {
 
             if (file.book_id == book.id) {
               async function createFileFromUrl(url, fileName) {
-                const resp = await fetch(url); // Fetch the image data
-                const blob = await resp.blob(); // Convert response to Blob
+                const resp = await fetch(url);
+                const blob = await resp.blob();
                 const file = new File([blob], fileName, {
-                  // Create File from Blob
                   type: blob.type,
                 });
                 return file;
@@ -480,6 +479,8 @@ function fetchBooks(cFilter = [], tFilter = []) {
     },
   });
 }
+
+//Daudzas no šīm categoy funkcijām varētu tikt vienkāršotas, izņemot datus no viena array nevis katrs savu ajax funkciju sūtot.
 
 function seedCategory(selectedCategory) {
   $.ajax({

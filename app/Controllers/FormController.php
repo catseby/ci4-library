@@ -65,6 +65,22 @@ class FormController extends BaseController
         return view("form_test", $data);
     }
 
+    public function update($name,$id) {
+        $json = $this->request->getJSON();
+
+        $db = db_connect();
+
+        $data = [];
+        $keys = [];
+        foreach ($json as $key => $value) {
+            $data[$key] = $value;
+            $keys[] = $key . " = ?";
+        }
+
+        $sql = 'UPDATE public.' . $name . ' SET ' . implode(',', $keys) . ' WHERE id = ' . $id;
+        $db->query($sql, array_values($data));
+    }
+
     public function destroy($name, $id)
     {
         $db = db_connect();
