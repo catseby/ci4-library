@@ -30,20 +30,44 @@ class FormController extends BaseController
 
     public function add($name)
     {
-        $json = $this->request->getJSON();
+        $files = $this->request->getFiles();
+        $post = $this->request->getPost();
 
         $db = db_connect();
 
-        $data = [];
-        foreach ($json as $key => $value) {
-            $data[$key] = $value;
-        }
+        if (count($files) > 0) {
+            foreach ($files['files'] as $file) {
+                $filename = $file->getName();
+                $file->move('uploads', $filename);
 
-        $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
-        $db->query($query, array_values($data));
+                $key = key($file);
+
+                $data = [];
+                foreach ($post as $key => $value) {
+                    if ($value == "?filename") {
+                        $data[$key] = $filename;
+                    } else {
+                        $data[$key] = $value;
+                    }
+                }
+
+                $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
+                $db->query($query, array_values($data));
+            }
+        } else {
+            $data = [];
+            foreach ($post as $key => $value) {
+                $data[$key] = $value;
+            }
+
+
+            $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
+            $db->query($query, array_values($data));
+        }
     }
 
-    public function edit($name,$id){
+    public function edit($name, $id)
+    {
         $ftm = new FormTemplateModel();
         $template = $ftm->getForm($name);
 
@@ -65,7 +89,8 @@ class FormController extends BaseController
         return view("form_test", $data);
     }
 
-    public function update($name,$id) {
+    public function update($name, $id)
+    {
         $json = $this->request->getJSON();
 
         $db = db_connect();

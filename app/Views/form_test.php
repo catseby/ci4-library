@@ -30,26 +30,80 @@
         let form = JSON.parse("<?= esc($form) ?>".replace(/&quot;/g, '"'));
         let value = JSON.parse("<?= esc($values) ?>".replace(/&quot;/g, '"'));
 
-        console.log(value[0]);
+
+        // function display_images() {
+        //     document.getElementById("image-display").innerHTML = " ";
+
+        //     let image = document.createElement("img");
+        //     const reader = new FileReader();
+        //     reader.onload = function (e) {
+        //         image.src = e.target.result;
+        //         document.getElementById("image-display").appendChild(image);
+        //     };
+        //     reader.readAsDataURL(file);
+        // }
+        // // console.log(schema);
+        // console.log(form);
+        // console.log(value[0]);
+
+        let multi_keys = [];
+        for (let i = 0; i < form.length; i++) {
+            let f = form[i];
+
+            if (f.image) {
+                f.onChange = function () {
+                    console.log("change");
+                    // display_images;
+                }
+                if (f.multiple){
+                    multi_keys.push(f.key);
+                }
+            }
+        }
+
 
         $("#test-form").jsonForm({
             schema: schema,
             form: form,
             value: value[0],
             "onSubmitValid": function (values) {
+                let formData = new FormData();
+
+                for (let i = 0; i < Object.keys(schema.properties).length; i++) {
+                    let key = Object.keys(schema.properties)[i];
+
+                    if (schema.properties[key].image) {
+                        let files = document.getElementsByName(key)[0].files[0];
+                        // console.log(files);
+                        formData.append("files[]", files);
+
+                        formData.append(key, "?filename");
+                    } else {
+                        let value = values[key];
+                        formData.append(key, value);
+                    }
+                }
+
+                // console.log(formData.getAll());
+
                 $.ajax({
                     url: "http://localhost:8080/forms/" + "<?= esc($link) ?>",
                     type: "post",
-                    data: JSON.stringify(values),
+                    data: formData,
                     processData: false,
                     contentType: false,
-                    success: function (response) { console.log("succsess") },
+                    success: function (response) { console.log(values) },
                     error: function (jqXHR, textStatus, errorThrown) {
                         console.error(jqXHR);
+                        console.log(values);
                     },
                 });
             }
-        })
+        });
+
+        for (let i = 0; i < multi_keys.length; i++){
+            $('[name="'+ multi_keys[i] + '"]').attr("multiple", "multiple");
+        }
     </script>
 </body>
 

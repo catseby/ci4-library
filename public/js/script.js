@@ -213,6 +213,7 @@ function addBook(values) {
     formData.append("files[]", file_array[i]);
   }
 
+  console.log(formData);
   file_array = [];
 
   $.ajax({
