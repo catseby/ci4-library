@@ -31,17 +31,20 @@
         let value = JSON.parse("<?= esc($values) ?>".replace(/&quot;/g, '"'));
 
 
-        // function display_images() {
-        //     document.getElementById("image-display").innerHTML = " ";
+        console.log(value);
+        function display_images(file) {
+            document.getElementById("image-display").innerHTML = " ";
 
-        //     let image = document.createElement("img");
-        //     const reader = new FileReader();
-        //     reader.onload = function (e) {
-        //         image.src = e.target.result;
-        //         document.getElementById("image-display").appendChild(image);
-        //     };
-        //     reader.readAsDataURL(file);
-        // }
+            let image = document.createElement("img");
+            const reader = new FileReader();
+            image.width = 320;
+            reader.onload = function (e) {
+                image.src = e.target.result;
+                document.getElementById("image-display").appendChild(image);
+            };
+            reader.readAsDataURL(file);
+        }
+
         // // console.log(schema);
         // console.log(form);
         // console.log(value[0]);
@@ -51,11 +54,15 @@
             let f = form[i];
 
             if (f.image) {
+                // let file = document.getElementsByName(f.key)[0].files[0];
+                // display_images(file);
+
                 f.onChange = function () {
                     console.log("change");
-                    // display_images;
+                    let file = document.getElementsByName(f.key)[0].files[0];
+                    display_images(file);
                 }
-                if (f.multiple){
+                if (f.multiple) {
                     multi_keys.push(f.key);
                 }
             }
@@ -101,8 +108,38 @@
             }
         });
 
-        for (let i = 0; i < multi_keys.length; i++){
-            $('[name="'+ multi_keys[i] + '"]').attr("multiple", "multiple");
+        for (let i = 0; i < multi_keys.length; i++) {
+            $('[name="' + multi_keys[i] + '"]').attr("multiple", "multiple");
+        }
+
+        for (let i = 0; i < form.length; i++) {
+            let f = form[i];
+
+            if (f.image) {
+                async function createFileFromUrl(url, fileName) {
+                    const resp = await fetch(url);
+                    const blob = await resp.blob();
+                    const file = new File([blob], fileName, {
+                        type: blob.type,
+                    });
+                    return file;
+                }
+
+                let filename = value[0][f.key];
+                createFileFromUrl("http://localhost:8080/uploads/" + filename, filename)
+                    .then((new_file) => {
+                            // var reader = new FileReader();
+                            // reader.onload = function() {
+                            //     document.getElementsByName(f.key)[0].value = reader.result;
+                            //     display_images(f.key);
+                            // }
+                            // reader.readAsDataURL(file);
+                        
+                        display_images(new_file);
+                        // console.log("success");
+                    })
+                    .catch((error) => console.error("Error creating file:", error));
+            }
         }
     </script>
 </body>
