@@ -79,7 +79,7 @@
                 for (let i = 0; i < Object.keys(schema.properties).length; i++) {
                     let key = Object.keys(schema.properties)[i];
 
-                    if (schema.properties[key].image) {
+                    if (schema.properties[key].type == "file") {
                         let files = document.getElementsByName(key)[0].files[0];
                         // console.log(files);
                         formData.append("files[]", files);
