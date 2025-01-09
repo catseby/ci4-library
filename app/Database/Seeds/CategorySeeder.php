@@ -30,9 +30,10 @@ class CategorySeeder extends Seeder
 
         foreach ($categories as $category_name) {
             $data = [
-                'category_name' => $category_name,
+                'name' => $category_name,
                 'created_at' => date('Y-m-d H:i:s')
             ];
+            log_message('debug', $category_name);
             $categoryModel->insert($data);
         }
     }

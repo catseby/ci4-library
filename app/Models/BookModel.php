@@ -12,7 +12,7 @@ class BookModel extends Model
     protected $returnType = 'array';
     protected $useSoftDeletes = false;
     protected $protectFields = true;
-    protected $allowedFields = ['isbn', 'title', 'author', 'category', 'tags', 'created_at', 'updated_at'];
+    protected $allowedFields = ['isbn', 'title', 'author', 'categories', 'tags', 'created_at', 'updated_at'];
 
     protected bool $allowEmptyInserts = false;
     protected bool $updateOnlyChanged = true;
@@ -54,7 +54,7 @@ class BookModel extends Model
         $quoted_string = implode(",", $quoted_array);
 
         $sql = "
-        SELECT * FROM public.books WHERE category::jsonb @> '[" . $categories . "]'::jsonb AND tags::jsonb @> '[" . $quoted_string . "]'::jsonb;
+        SELECT * FROM public.books WHERE categories::jsonb @> '[" . $categories . "]'::jsonb AND tags::jsonb @> '[" . $quoted_string . "]'::jsonb;
         ";
 
         $query = $this->db->query($sql);
@@ -67,7 +67,7 @@ class BookModel extends Model
     public function filterByCategory($categories)
     {
         $sql = "
-        SELECT * FROM public.books WHERE category::jsonb @> '[" . $categories . "]'::jsonb;
+        SELECT * FROM public.books WHERE categories::jsonb @> '[" . $categories . "]'::jsonb;
         ";
 
         $query = $this->db->query($sql);

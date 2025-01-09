@@ -28,7 +28,7 @@ class BookTable extends Migration
                 'type' => 'VARCHAR',
                 'constraint' => 255,
             ],
-            'category' => [
+            'categories' => [
                 'type' => 'JSONB',
             ],
             'tags' => [

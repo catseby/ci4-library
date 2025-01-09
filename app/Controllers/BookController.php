@@ -37,7 +37,7 @@ class BookController extends BaseController
 
     public function fetch() {
 
-        $categories = $this->request->getGet('category');
+        $categories = $this->request->getGet('categories');
         $tags = $this->request->getGet('tags');
 
         $bookModel = new BookModel();

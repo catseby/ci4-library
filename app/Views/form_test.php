@@ -127,18 +127,34 @@
 
                 let filename = value[0][f.key];
                 createFileFromUrl("http://localhost:8080/uploads/" + filename, filename)
-                    .then((new_file) => {
-                            // var reader = new FileReader();
-                            // reader.onload = function() {
-                            //     document.getElementsByName(f.key)[0].value = reader.result;
-                            //     display_images(f.key);
-                            // }
-                            // reader.readAsDataURL(file);
-                        
-                        display_images(new_file);
-                        // console.log("success");
-                    })
+                    .then((new_file) => { display_images(new_file); })
                     .catch((error) => console.error("Error creating file:", error));
+            }
+
+            if (f.select) {
+                $.ajax({
+                    url: "http://localhost:8080/forms/" + f.table + "/fetch",
+                    type: "get",
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        let result = JSON.parse(response);
+
+                        let dropdown = $('[name="' + f.key + '"]');
+                        dropdown.attr("multiple", "multiple").select2();
+                        dropdown.empty();
+
+                        schema['properties'][f.key]['enum']
+                        for (let i = 0; i < result.length; i++) {
+                            let option = $("<option>", {
+                                value: parseInt(result[i].id),
+                                text: result[i].name,
+                            });
+                            dropdown.append(option);
+                        }
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) { console.error(jqXHR); },
+                });
             }
         }
     </script>

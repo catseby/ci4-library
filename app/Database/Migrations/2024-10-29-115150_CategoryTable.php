@@ -15,7 +15,7 @@ class CategoryTable extends Migration
                 'unsigned' => true,
                 'auto_increment' => true,
             ],
-            'category_name' => [
+            'name' => [
                 'type' => 'VARCHAR',
                 'constraint' => 255,
             ],

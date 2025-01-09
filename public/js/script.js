@@ -498,7 +498,7 @@ function seedCategory(selectedCategory) {
         let category = data.categories[i];
         var option = $("<option>", {
           value: i,
-          text: category.category_name,
+          text: category.name,
         });
         if (
           Array.isArray(selectedCategory) &&

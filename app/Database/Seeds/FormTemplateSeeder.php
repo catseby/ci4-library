@@ -85,7 +85,18 @@ class FormTemplateSeeder extends Seeder
                         ]
                     );
                     break;
+                case "select list":
+                    $schema['properties'][$row['column_name']] = [
+                        "type" => "string",
+                        "title" => ucfirst($row["column_name"]),
+                        "enum" => ["None"]
+                    ];
 
+                    array_push($form, [
+                        "key" => $row['column_name'],
+                        "select" => true,
+                        "table" => $row["column_name"]
+                    ]);
             }
 
             // $schema['properties'][$row["column_name"]] = $property;
@@ -93,22 +104,24 @@ class FormTemplateSeeder extends Seeder
             $forms[$row["table_name"]] = $form;
         }
 
-        foreach ($forms as $key => $value){
-            array_push($value,
-            [
-                "type" => "submit",
-                "title" => "Submit"
-            ]);
+        foreach ($forms as $key => $value) {
+            array_push(
+                $value,
+                [
+                    "type" => "submit",
+                    "title" => "Submit"
+                ]
+            );
             $forms[$key] = $value;
         }
 
-        foreach($schemas as $key => $value) {
+        foreach ($schemas as $key => $value) {
             $schema = json_encode($schemas[$key]);
             log_message("debug", $schema);
             $form = json_encode($forms[$key]);
 
-            $input_sql = "INSERT INTO public.form_templates (name, schema, form)".
-            "VALUES ('" . $key . "', '" . $schema . "', '" . $form  . "');";
+            $input_sql = "INSERT INTO public.form_templates (name, schema, form)" .
+                "VALUES ('" . $key . "', '" . $schema . "', '" . $form . "');";
             $db->query($input_sql);
         }
     }

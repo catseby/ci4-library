@@ -9,6 +9,17 @@ use CodeIgniter\HTTP\ResponseInterface;
 
 class FormController extends BaseController
 {
+    
+    public function fetch($name) {
+
+        $db = db_connect();
+
+        $sql = 'SELECT * FROM public.' . $name;
+        $result = $db->query($sql)->getResultArray();
+
+        return json_encode($result);
+    }
+
     public function index($name)
     {
         $ftm = new FormTemplateModel();
@@ -91,19 +102,43 @@ class FormController extends BaseController
 
     public function update($name, $id)
     {
-        $json = $this->request->getJSON();
+        $files = $this->request->getFiles();
+        $post = $this->request->getPost();
 
         $db = db_connect();
 
-        $data = [];
-        $keys = [];
-        foreach ($json as $key => $value) {
-            $data[$key] = $value;
-            $keys[] = $key . " = ?";
-        }
+        if (count($files) > 0) {
+            foreach ($files['files'] as $file) {
+                $filename = $file->getName();
+                $file->move('uploads', $filename);
 
-        $sql = 'UPDATE public.' . $name . ' SET ' . implode(',', $keys) . ' WHERE id = ' . $id;
-        $db->query($sql, array_values($data));
+                $key = key($file);
+
+                $data = [];
+                $keys = [];
+                foreach ($post as $key => $value) {
+                    if ($value == "?filename") {
+                        $data[$key] = $filename;
+                    } else {
+                        $data[$key] = $value;
+                    }
+                    $keys[] = $key . " = ?";
+                }
+                $sql = 'UPDATE public.' . $name . ' SET ' . implode(',', $keys) . ' WHERE id = ' . $id;
+                $db->query($sql, array_values($data));
+            }
+        } else {
+            $data = [];
+            $keys = [];
+            foreach ($post as $key => $value) {
+                $data[$key] = $value;
+                $keys[] = $key . " = ?";
+            }
+
+
+            $sql = 'UPDATE public.' . $name . ' SET ' . implode(',', $keys) . ' WHERE id = ' . $id;
+            $db->query($sql, array_values($data));
+        }
     }
 
     public function destroy($name, $id)
