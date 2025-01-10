@@ -14,7 +14,8 @@ class CustomDataTypeSeeder extends Seeder
 
     protected $affected_columns = [
         ['table' => 'images', 'column' => 'image', 'domain' => 'image'],
-        ['table' => 'books', 'column' => 'categories', 'domain' => 'select list']
+        ['table' => 'books', 'column' => 'categories', 'domain' => 'select list'],
+        ['table' => 'books', 'column' => 'tags', 'domain' => 'varchar array']
     ];
 
 

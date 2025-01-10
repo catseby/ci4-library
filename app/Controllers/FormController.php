@@ -86,16 +86,28 @@ class FormController extends BaseController
 
         $sql = 'SELECT * FROM public.' . $name . ' WHERE id = ' . $id;
         $query = $db->query($sql);
+        $result = $query->getResultArray();
+
+        foreach ($result[0] as $key => $value) {
+            $decoded = json_decode($value ,true);
+            if ($decoded != null){
+                $result[0][$key] = json_decode($value ,true);
+            }
+        }
+
+        log_message("debug", json_encode($result));
 
         $link = $name . '/' . $id . '/edit';
         $data = [
             'name' => $template['name'],
-            'schema' => $template['schema'],
+            'schema' =>$template['schema'],
             'form' => $template['form'],
             'link' => $link,
             'type' => 'post',
-            'values' => json_encode($query->getResult())
+            'values' => json_encode($result)
         ];
+
+        //log_message("debug", json_encode($query->getResult()));
 
         return view("form_test", $data);
     }
@@ -154,6 +166,7 @@ class FormController extends BaseController
             'form' => '{}',
             'link' => "",
             'type' => 'get',
+            'values' => '{}'
         ];
 
         return view("form_test", $data);

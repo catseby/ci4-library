@@ -87,9 +87,8 @@ class FormTemplateSeeder extends Seeder
                     break;
                 case "select list":
                     $schema['properties'][$row['column_name']] = [
-                        "type" => "string",
-                        "title" => ucfirst($row["column_name"]),
-                        "enum" => ["None"]
+                        "type" => "select",
+                        "title" => ucfirst($row["column_name"])
                     ];
 
                     array_push($form, [
@@ -97,6 +96,26 @@ class FormTemplateSeeder extends Seeder
                         "select" => true,
                         "table" => $row["column_name"]
                     ]);
+                    break;
+
+                case "varchar array":
+                    $schema['properties'][$row['column_name']] = [
+                        "type" => "array",
+                        "title" => ucfirst($row["column_name"]),
+                        "items" => [
+                            "type" => "string"
+                        ]
+                    ];
+
+                    array_push($form, [
+                        "type" => "tab",
+                        "items" => [
+                            [
+                                "key" => $row["column_name"]
+                            ]
+                        ]
+                    ]);
+                    break;
             }
 
             // $schema['properties'][$row["column_name"]] = $property;

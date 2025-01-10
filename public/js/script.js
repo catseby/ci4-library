@@ -297,7 +297,7 @@ function fetchBooks(cFilter = [], tFilter = []) {
       for (let i = 0; i < data.books.length; i++) {
         let book = data.books[i];
 
-        let parseBooks = JSON.parse(book.category);
+        let parseBooks = JSON.parse(book.categories);
 
         let book_categories = [];
         for (let j = 0; j < parseBooks.length; j++) {
@@ -450,7 +450,7 @@ function fetchBooks(cFilter = [], tFilter = []) {
             }
           }
 
-          seedCategory(JSON.parse(book.category));
+          seedCategory(JSON.parse(book.categories));
         };
 
         let delete_button = document.createElement("button");

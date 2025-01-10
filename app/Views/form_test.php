@@ -26,9 +26,9 @@
         <form action="" id="test-form"></form>
     </div>
     <script>
-        let schema = JSON.parse("<?= esc($schema) ?>".replace(/&quot;/g, '"'));
-        let form = JSON.parse("<?= esc($form) ?>".replace(/&quot;/g, '"'));
-        let value = JSON.parse("<?= esc($values) ?>".replace(/&quot;/g, '"'));
+        let schema = <?php echo $schema; ?>;
+        let form =<?php echo $form; ?>;
+        let value = <?php echo $values; ?>;
 
 
         console.log(value);
@@ -68,12 +68,12 @@
             }
         }
 
-
         $("#test-form").jsonForm({
             schema: schema,
             form: form,
             value: value[0],
             "onSubmitValid": function (values) {
+                console.log("asd");
                 let formData = new FormData();
 
                 for (let i = 0; i < Object.keys(schema.properties).length; i++) {
@@ -85,7 +85,16 @@
                         formData.append("files[]", files);
 
                         formData.append(key, "?filename");
-                    } else {
+                    } 
+                    else if (schema.properties[key].type == "select") {
+                        let select_value = $('[name="' + key + '"]').val().map(Number);
+                        formData.append(key, JSON.stringify(select_value));
+                    } 
+                    else if (schema.properties[key].type == "array") {
+                        console.log(values[key]);
+                        formData.append(key, JSON.stringify(values[key]));
+                    } 
+                    else {
                         let value = values[key];
                         formData.append(key, value);
                     }
@@ -102,9 +111,11 @@
                     success: function (response) { console.log(values) },
                     error: function (jqXHR, textStatus, errorThrown) {
                         console.error(jqXHR);
-                        console.log(values);
+                        console.error(textStatus);
+                        console.error(errorThrown);
                     },
                 });
+
             }
         });
 
@@ -143,13 +154,19 @@
                         let dropdown = $('[name="' + f.key + '"]');
                         dropdown.attr("multiple", "multiple").select2();
                         dropdown.empty();
-
-                        schema['properties'][f.key]['enum']
+                        
+                        // schema['properties'][f.key]['enum']
                         for (let i = 0; i < result.length; i++) {
                             let option = $("<option>", {
                                 value: parseInt(result[i].id),
                                 text: result[i].name,
                             });
+                            for (let j = 0; j < value[0][f.key].length; j++) {
+                                if (value[0][f.key][j] == parseInt(result[i].id)) {
+                                    console.log("asd");
+                                    option.attr("selected", "selected");
+                                }
+                            }
                             dropdown.append(option);
                         }
                     },
