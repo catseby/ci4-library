@@ -3,7 +3,6 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
-use App\Models\FormModel;
 use App\Models\FormTemplateModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -78,14 +77,16 @@ class FormController extends BaseController
         }
     }
 
-    public function edit($name, $id)
+    public function edit($name, $index, $column)
     {
+
+        log_message("debug", $column);
         $ftm = new FormTemplateModel();
         $template = $ftm->getForm($name);
 
         $db = db_connect();
 
-        $sql = 'SELECT * FROM public.' . $name . ' WHERE id = ' . $id;
+        $sql = 'SELECT * FROM public.' . $name . ' WHERE ' . $column . ' = ' . $index;
         $query = $db->query($sql);
         $result = $query->getResultArray();
 
@@ -96,7 +97,7 @@ class FormController extends BaseController
             }
         }
 
-        $link = $name . '/' . $id . '/edit';
+        $link = $name . '/edit/' . $index . '/' . $column;
         $data = [
             'name' => $template['name'],
             'schema' => $template['schema'],

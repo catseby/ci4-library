@@ -28,15 +28,45 @@
         let form = <?php echo $form; ?>;
         let value = <?php echo $values; ?>;
 
-        function display_images(file) {
-            document.getElementById("image-display").innerHTML = " ";
+        function display_images(file, reset = true) {
 
+            if (reset) {
+                document.getElementById("image-display").innerHTML = " ";
+            }
+            let container = document.createElement("div");
+            container.style.position = 'relative';
+            container.style.display = 'inline-block';
+            container.style.margin = '10px';
+            
             let image = document.createElement("img");
-            const reader = new FileReader();
             image.width = 320;
+            image.style.display = 'block';
+
+            let closeButton = document.createElement("button");
+            closeButton.textContent = 'X';
+
+            closeButton.style.position = 'absolute';
+            closeButton.style.top = '5px';
+            closeButton.style.right = '5px';
+            closeButton.style.backgroundColor = 'red';
+            closeButton.style.color = 'white';
+            closeButton.style.border = 'none';
+            closeButton.style.borderRadius = '50%';
+            closeButton.style.opacity = '0.7';
+            // closeButton.style.width = '20px';
+            // closeButton.style.height = '20px';
+            closeButton.style.textAlign = 'center';
+            closeButton.style.cursor = 'pointer';
+            closeButton.style.fontSize = '14px';
+            closeButton.style.lineHeight = '20px';
+
+            container.appendChild(image);
+            container.appendChild(closeButton);
+
+            const reader = new FileReader();
             reader.onload = function (e) {
                 image.src = e.target.result;
-                document.getElementById("image-display").appendChild(image);
+                document.getElementById("image-display").appendChild(container);
             };
             reader.readAsDataURL(file);
         }
@@ -51,8 +81,16 @@
             if (f.image) {
                 f.onChange = function () {
                     console.log("change");
-                    let file = document.getElementsByName(f.key)[0].files[0];
-                    display_images(file);
+                    let files = document.getElementsByName(f.key)[0].files;
+                    for (let j = 0; j < files.length; j++) {
+                        let file = files[j];
+                        if (j == 0) {
+                            display_images(file);
+                        }
+                        else {
+                            display_images(file, false);
+                        }
+                    }
                 }
                 if (f.multiple) {
                     multi_keys.push(f.key);
@@ -74,10 +112,12 @@
                     let key = Object.keys(schema.properties)[i];
 
                     if (schema.properties[key].type == "file") {
-                        let files = document.getElementsByName(key)[0].files[0];
-                        formData.append("files[]", files);
+                        let files = document.getElementsByName(key)[0].files;
+                        for (let j = 0; j < files.length; j++) {
+                            formData.append("files[]", files[j]);
 
-                        formData.append(key, "?filename");
+                            formData.append(key, "?filename");
+                        }
                     }
                     else if (schema.properties[key].type == "select") {
                         let select_value = $('[name="' + key + '"]').val().map(Number);
@@ -130,10 +170,16 @@
                     return file;
                 }
 
-                let filename = value[0][f.key];
-                createFileFromUrl("http://localhost:8080/uploads/" + filename, filename)
-                    .then((new_file) => { display_images(new_file); })
-                    .catch((error) => console.error("Error creating file:", error));
+                console.log(value);
+
+                for (let j = 0; j < value.length; j++) {
+                    let filename = value[j][f.key];
+                    createFileFromUrl("http://localhost:8080/uploads/" + filename, filename)
+                        .then((new_file) => {
+                            display_images(new_file, false);
+                        })
+                        .catch((error) => console.error("Error creating file:", error));
+                }
             }
 
             if (f.select) {

@@ -29,9 +29,7 @@ class FormTemplateSeeder extends Seeder
         foreach ($results as $row) {
             $schema;
             $form;
-            // if (in_array($row["table_name"], $schemas)) {
-            //     $schema = $schemas[$row["table_name"]];
-            // } 
+
             if (array_key_exists($row["table_name"], $schemas)) {
                 $schema = $schemas[$row["table_name"]];
                 $form = $forms[$row["table_name"]];
@@ -44,7 +42,6 @@ class FormTemplateSeeder extends Seeder
                 $form = [];
             }
 
-            // $property = [];
             switch ($row['data_type']) {
 
                 case 'integer':
@@ -118,7 +115,6 @@ class FormTemplateSeeder extends Seeder
                     break;
             }
 
-            // $schema['properties'][$row["column_name"]] = $property;
             $schemas[$row["table_name"]] = $schema;
             $forms[$row["table_name"]] = $form;
         }
