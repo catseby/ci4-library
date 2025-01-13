@@ -304,7 +304,7 @@ function fetchBooks(cFilter = [], tFilter = []) {
           let category_name = "?";
           for (let k = 0; k < categories.length; k++) {
             if (String(parseBooks[j] + 1) == categories[k].id) {
-              category_name = categories[k].category_name;
+              category_name = categories[k].name;
               break;
             }
           }
@@ -539,7 +539,7 @@ function seedCategoryFilter() {
         let category = data.categories[i];
         var option = $("<option>", {
           value: i,
-          text: category.category_name,
+          text: category.name,
         });
         categoryFilter.append(option);
       }

@@ -9,8 +9,9 @@ use CodeIgniter\HTTP\ResponseInterface;
 
 class FormController extends BaseController
 {
-    
-    public function fetch($name) {
+
+    public function fetch($name)
+    {
 
         $db = db_connect();
 
@@ -89,25 +90,22 @@ class FormController extends BaseController
         $result = $query->getResultArray();
 
         foreach ($result[0] as $key => $value) {
-            $decoded = json_decode($value ,true);
-            if ($decoded != null){
-                $result[0][$key] = json_decode($value ,true);
+            $decoded = json_decode($value, true);
+            if ($decoded != null) {
+                $result[0][$key] = json_decode($value, true);
             }
         }
-
-        log_message("debug", json_encode($result));
 
         $link = $name . '/' . $id . '/edit';
         $data = [
             'name' => $template['name'],
-            'schema' =>$template['schema'],
+            'schema' => $template['schema'],
             'form' => $template['form'],
             'link' => $link,
             'type' => 'post',
             'values' => json_encode($result)
         ];
 
-        //log_message("debug", json_encode($query->getResult()));
 
         return view("form_test", $data);
     }

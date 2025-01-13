@@ -20,18 +20,14 @@
 
 <body>
     <div>
-        <h1><?= esc($name) ?></h1>
-    </div>
-    <div>
+        <h1 style="text-transform:capitalize"><?= esc($name) ?></h1>
         <form action="" id="test-form"></form>
     </div>
     <script>
         let schema = <?php echo $schema; ?>;
-        let form =<?php echo $form; ?>;
+        let form = <?php echo $form; ?>;
         let value = <?php echo $values; ?>;
 
-
-        console.log(value);
         function display_images(file) {
             document.getElementById("image-display").innerHTML = " ";
 
@@ -45,18 +41,14 @@
             reader.readAsDataURL(file);
         }
 
-        // // console.log(schema);
-        // console.log(form);
-        // console.log(value[0]);
+        // Pirms formas noformatēšana=================
+        //====================================
 
         let multi_keys = [];
         for (let i = 0; i < form.length; i++) {
             let f = form[i];
 
             if (f.image) {
-                // let file = document.getElementsByName(f.key)[0].files[0];
-                // display_images(file);
-
                 f.onChange = function () {
                     console.log("change");
                     let file = document.getElementsByName(f.key)[0].files[0];
@@ -68,12 +60,14 @@
             }
         }
 
+        //Formas ģenerēšana ==============================
+        //===========================================
+
         $("#test-form").jsonForm({
             schema: schema,
             form: form,
             value: value[0],
             "onSubmitValid": function (values) {
-                console.log("asd");
                 let formData = new FormData();
 
                 for (let i = 0; i < Object.keys(schema.properties).length; i++) {
@@ -81,26 +75,24 @@
 
                     if (schema.properties[key].type == "file") {
                         let files = document.getElementsByName(key)[0].files[0];
-                        // console.log(files);
                         formData.append("files[]", files);
 
                         formData.append(key, "?filename");
-                    } 
+                    }
                     else if (schema.properties[key].type == "select") {
                         let select_value = $('[name="' + key + '"]').val().map(Number);
                         formData.append(key, JSON.stringify(select_value));
-                    } 
+                    }
                     else if (schema.properties[key].type == "array") {
                         console.log(values[key]);
                         formData.append(key, JSON.stringify(values[key]));
-                    } 
+                    }
                     else {
                         let value = values[key];
                         formData.append(key, value);
                     }
                 }
 
-                // console.log(formData.getAll());
 
                 $.ajax({
                     url: "http://localhost:8080/forms/" + "<?= esc($link) ?>",
@@ -115,9 +107,11 @@
                         console.error(errorThrown);
                     },
                 });
-
             }
         });
+
+        // ģenerētās formas papildināšana ================
+        // =====================================
 
         for (let i = 0; i < multi_keys.length; i++) {
             $('[name="' + multi_keys[i] + '"]').attr("multiple", "multiple");
@@ -154,17 +148,19 @@
                         let dropdown = $('[name="' + f.key + '"]');
                         dropdown.attr("multiple", "multiple").select2();
                         dropdown.empty();
-                        
-                        // schema['properties'][f.key]['enum']
+
                         for (let i = 0; i < result.length; i++) {
                             let option = $("<option>", {
                                 value: parseInt(result[i].id),
                                 text: result[i].name,
                             });
-                            for (let j = 0; j < value[0][f.key].length; j++) {
-                                if (value[0][f.key][j] == parseInt(result[i].id)) {
-                                    console.log("asd");
-                                    option.attr("selected", "selected");
+
+                            if (Object.keys(value).length > 0) {
+                                for (let j = 0; j < value[0][f.key].length; j++) {
+
+                                    if (value[0][f.key][j] == parseInt(result[i].id)) {
+                                        option.attr("selected", "selected");
+                                    }
                                 }
                             }
                             dropdown.append(option);
