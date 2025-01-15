@@ -22,10 +22,14 @@ $routes->post('/forms/(:alpha)/add', 'FormController::add/$1');
 
 $routes->get('/forms/(:alpha)/edit/(:num)', 'FormController::edit/$1/$2/id');
 $routes->get('/forms/(:alpha)/edit/(:num)/(:segment)', 'FormController::edit/$1/$2/$3');
+
 $routes->post('/forms/(:alpha)/edit/(:num)', 'FormController::update/$1/$2/id');
 $routes->post('/forms/(:alpha)/edit/(:num)/(:segment)', 'FormController::update/$1/$2/$3');
 
-$routes->get('/forms/(:alpha)/delete/(:num)', 'FormController::destroy/$1/$2');
+$routes->get('/forms/(:alpha)/delete/(:num)', 'FormController::destroy/$1/$2/id');
+$routes->get('/forms/(:alpha)/delete/(:num)/(:segment)', 'FormController::destroy/$1/$2/$3');
+
+
 
 
 

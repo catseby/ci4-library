@@ -79,8 +79,6 @@ class FormController extends BaseController
 
     public function edit($name, $index, $column)
     {
-
-        log_message("debug", $column);
         $ftm = new FormTemplateModel();
         $template = $ftm->getForm($name);
 
@@ -111,7 +109,7 @@ class FormController extends BaseController
         return view("form_test", $data);
     }
 
-    public function update($name, $id)
+    public function update($name, $index, $column)
     {
         $files = $this->request->getFiles();
         $post = $this->request->getPost();
@@ -119,6 +117,8 @@ class FormController extends BaseController
         $db = db_connect();
 
         if (count($files) > 0) {
+            $this->destroy_with_files($name,$index, $column);
+
             foreach ($files['files'] as $file) {
                 $filename = $file->getName();
                 $file->move('uploads', $filename);
@@ -135,8 +135,8 @@ class FormController extends BaseController
                     }
                     $keys[] = $key . " = ?";
                 }
-                $sql = 'UPDATE public.' . $name . ' SET ' . implode(',', $keys) . ' WHERE id = ' . $id;
-                $db->query($sql, array_values($data));
+                $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
+                $db->query($query, array_values($data));
             }
         } else {
             $data = [];
@@ -147,16 +147,16 @@ class FormController extends BaseController
             }
 
 
-            $sql = 'UPDATE public.' . $name . ' SET ' . implode(',', $keys) . ' WHERE id = ' . $id;
+            $sql = 'UPDATE public.' . $name . ' SET ' . implode(',', $keys) . ' WHERE ' . $column . ' = ' . $index;
             $db->query($sql, array_values($data));
         }
     }
 
-    public function destroy($name, $id)
+    public function destroy($name, $index, $column)
     {
         $db = db_connect();
 
-        $query = 'DELETE FROM public.' . $name . ' WHERE id = ' . $id;
+        $query = 'DELETE FROM public.' . $name . ' WHERE '. $column . ' = ' . $index;
         $db->query($query);
 
         $data = [
@@ -170,5 +170,35 @@ class FormController extends BaseController
 
         return view("form_test", $data);
 
+    }
+
+    public function destroy_with_files($name, $index, $column) {
+        $db = db_connect();
+
+        $sql1 = "SELECT column_name ". 
+        "FROM information_schema.columns ". 
+        "WHERE table_schema = 'public' ". 
+        "AND table_name = '" . $name . "' ". 
+        "AND domain_name IN ('image') ". 
+        "ORDER BY table_name, ordinal_position;";
+
+        $sql2 = 'SELECT * FROM public.' . $name . ' WHERE ' . $column . ' = ' . $index;
+
+        $sql3 = 'DELETE FROM public.' . $name . ' WHERE '. $column . ' = ' . $index;
+
+        $valid_column_arr = $db->query($sql1)->getResultArray();
+        $results = $db->query($sql2)->getResultArray();
+
+        
+        foreach($valid_column_arr as $valid_column_key => $valid_column) 
+        {
+            $column_name = $valid_column['column_name'];
+            log_message("debug", $column_name);
+            foreach($results as $key => $result) {
+                unlink("./uploads/" . $result[$column_name]);
+            }
+        }
+
+        $db->query($sql3);
     }
 }

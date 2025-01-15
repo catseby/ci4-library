@@ -27,6 +27,7 @@
         let schema = <?php echo $schema; ?>;
         let form = <?php echo $form; ?>;
         let value = <?php echo $values; ?>;
+        let file_arr = [];
 
         function display_images(file, reset = true) {
 
@@ -37,9 +38,9 @@
             container.style.position = 'relative';
             container.style.display = 'inline-block';
             container.style.margin = '10px';
-            
+
             let image = document.createElement("img");
-            image.width = 320;
+            image.width = 128;
             image.style.display = 'block';
 
             let closeButton = document.createElement("button");
@@ -59,6 +60,17 @@
             closeButton.style.cursor = 'pointer';
             closeButton.style.fontSize = '14px';
             closeButton.style.lineHeight = '20px';
+
+            closeButton.onclick = function (e) {
+                e.preventDefault();
+                let parent = container.parentNode
+                let index = Array.prototype.indexOf.call(
+                    parent.children,
+                    container
+                );
+                file_arr.splice(index, 1);
+                container.remove();
+            };
 
             container.appendChild(image);
             container.appendChild(closeButton);
@@ -84,12 +96,8 @@
                     let files = document.getElementsByName(f.key)[0].files;
                     for (let j = 0; j < files.length; j++) {
                         let file = files[j];
-                        if (j == 0) {
-                            display_images(file);
-                        }
-                        else {
-                            display_images(file, false);
-                        }
+                        file_arr.push(file);
+                        display_images(file, false)
                     }
                 }
                 if (f.multiple) {
@@ -112,9 +120,9 @@
                     let key = Object.keys(schema.properties)[i];
 
                     if (schema.properties[key].type == "file") {
-                        let files = document.getElementsByName(key)[0].files;
-                        for (let j = 0; j < files.length; j++) {
-                            formData.append("files[]", files[j]);
+                        // let files = document.getElementsByName(key)[0].files;
+                        for (let j = 0; j < file_arr.length; j++) {
+                            formData.append("files[]", file_arr[j]);
 
                             formData.append(key, "?filename");
                         }
@@ -170,12 +178,12 @@
                     return file;
                 }
 
-                console.log(value);
 
                 for (let j = 0; j < value.length; j++) {
                     let filename = value[j][f.key];
                     createFileFromUrl("http://localhost:8080/uploads/" + filename, filename)
                         .then((new_file) => {
+                            file_arr.push(new_file);
                             display_images(new_file, false);
                         })
                         .catch((error) => console.error("Error creating file:", error));
@@ -215,6 +223,7 @@
                     error: function (jqXHR, textStatus, errorThrown) { console.error(jqXHR); },
                 });
             }
+            console.log(file_arr);
         }
     </script>
 </body>
