@@ -15,6 +15,9 @@ $routes->get('/books/(:num)', 'BookController::edit/$1');
 $routes->post('/books/(:num)', 'BookController::update/$1');
 $routes->delete('/books/(:num)', 'BookController::destroy/$1');
 
+
+$routes->get('/forms/(:alpha)', 'FormController::index/$1');
+
 $routes->get('/forms/(:alpha)/fetch', 'FormController::fetch/$1');
 
 $routes->get('/forms/(:alpha)/add', 'FormController::index/$1');
