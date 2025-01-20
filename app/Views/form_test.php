@@ -90,7 +90,7 @@
         for (let i = 0; i < form.length; i++) {
             let f = form[i];
 
-            if (f.image) {
+            if (f.hasOwnProperty('image')) {
                 f.onChange = function () {
                     console.log("change");
                     let files = document.getElementsByName(f.key)[0].files;
@@ -100,7 +100,7 @@
                         display_images(file, false)
                     }
                 }
-                if (f.multiple) {
+                if (f.image.multiple) {
                     multi_keys.push(f.key);
                 }
             }
@@ -168,7 +168,7 @@
         for (let i = 0; i < form.length; i++) {
             let f = form[i];
 
-            if (f.image) {
+            if (f.hasOwnProperty('image')) {
                 async function createFileFromUrl(url, fileName) {
                     const resp = await fetch(url);
                     const blob = await resp.blob();
@@ -190,9 +190,9 @@
                 }
             }
 
-            if (f.select) {
+            if (f.hasOwnProperty('select')) {
                 $.ajax({
-                    url: "http://localhost:8080/forms/" + f.table + "/fetch",
+                    url: "http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column,
                     type: "get",
                     processData: false,
                     contentType: false,
@@ -200,13 +200,15 @@
                         let result = JSON.parse(response);
 
                         let dropdown = $('[name="' + f.key + '"]');
-                        dropdown.attr("multiple", "multiple").select2();
-                        dropdown.empty();
-
+                        if (f.select.multiple) {
+                            dropdown.attr("multiple", "multiple").select2();
+                        }
+                        dropdown.empty();   
                         for (let i = 0; i < result.length; i++) {
+                            console.log(result[i]);
                             let option = $("<option>", {
                                 value: parseInt(result[i].id),
-                                text: result[i].name,
+                                text: result[i].item,
                             });
 
                             if (Object.keys(value).length > 0) {

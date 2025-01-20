@@ -45,6 +45,16 @@ class FromMetadata extends Migration
                 'type' => 'INT',
                 'constraint' => 11
             ],
+            'ref_table_name' => [
+                'type' => 'VARCHAR',
+                'constraint' => 255,
+                'null' => true
+            ],
+            'ref_column_name' => [
+                'type' => 'VARCHAR',
+                'constraint' => 255,
+                'null' => true
+            ],
             'created_at' => [
                 'type' => 'DATETIME',
                 'null' => true,
