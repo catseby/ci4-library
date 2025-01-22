@@ -55,10 +55,20 @@ class FromMetadata extends Migration
                 'constraint' => 255,
                 'null' => true
             ],
-            'created_at' => [
-                'type' => 'DATETIME',
-                'null' => true,
+            'dynamic_fetch' => [
+                'type' => 'BOOL',
+                'default' => false
             ],
+            'ref_fetch_key' => [
+                'type' => 'VARCHAR',
+                'constraint' => 255,
+                'null' => true
+            ],
+            'ref_fetch_target' => [
+                'type' => 'VARCHAR',
+                'constraint' => 255,
+                'null' => true
+            ]
         ]);
 
         $this->forge->addKey('id', true);

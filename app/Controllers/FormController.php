@@ -20,6 +20,17 @@ class FormController extends BaseController
         return json_encode($result);
     }
 
+    public function fetchWhere($table, $column, $target, $value)
+    {
+        $sql = 'SELECT id, ' . $column . ' AS item FROM public.' . $table . ' WHERE ' . $target . " = '" . $value . "';";
+
+        $db = db_connect();
+
+        $result = $db->query($sql)->getResultArray();
+
+        return json_encode($result);
+    }
+
     public function index($table)
     {
         $formModel = new FormModel();
@@ -242,7 +253,7 @@ class FormController extends BaseController
                         "type" => "section"
                     ];
                     break;
-                case "image/multiple":
+                case "image-multiple":
                     $field = [
                         'key' => $result['column_name'],
                         'image' => [
@@ -262,8 +273,14 @@ class FormController extends BaseController
                             'column' => $result['ref_column_name']
                         ]
                     ];
+                    
+                    if ($result['dynamic_fetch'] == 't') {
+                        $field['select']['ref_fetch_key'] = $result['ref_fetch_key'];
+                        $field['select']['ref_fetch_target'] = $result['ref_fetch_target'];
+                        $field['select']['dynamic_fetch'] = true;
+                    }
                     break;
-                case "select/multiple":
+                case "select-multiple":
                     $field = [
                         'key' => $result['column_name'],
                         'select' => [

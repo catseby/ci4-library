@@ -83,6 +83,43 @@
             reader.readAsDataURL(file);
         }
 
+        function display_selects(fetch_link, f) {
+            $.ajax({
+                url: fetch_link,
+                type: "get",
+                processData: false,
+                contentType: false,
+                success: function (response) {
+                    let result = JSON.parse(response);
+
+                    let dropdown = $('[name="' + f.key + '"]');
+                    if (f.select.multiple) {
+                        dropdown.attr("multiple", "multiple").select2();
+                    }
+                    dropdown.empty();
+                    for (let i = 0; i < result.length; i++) {
+                        // console.log(result[i]);
+                        let option = $("<option>", {
+                            value: parseInt(result[i].id),
+                            text: result[i].item,
+                        });
+
+                        if (Object.keys(value).length > 0) {
+                            for (let j = 0; j < value[0][f.key].length; j++) {
+
+                                if (value[0][f.key][j] == parseInt(result[i].id)) {
+                                    option.attr("selected", "selected");
+                                }
+                            }
+                        }
+                        dropdown.append(option);
+                    }
+                    dropdown.trigger('change');
+                },
+                error: function (jqXHR, textStatus, errorThrown) { console.error(jqXHR); },
+            });
+        }
+
         // Pirms formas noformatēšana=================
         //====================================
 
@@ -118,6 +155,7 @@
 
                 for (let i = 0; i < Object.keys(schema.properties).length; i++) {
                     let key = Object.keys(schema.properties)[i];
+                    console.log(key);
 
                     if (schema.properties[key].type == "file") {
                         // let files = document.getElementsByName(key)[0].files;
@@ -128,8 +166,16 @@
                         }
                     }
                     else if (schema.properties[key].type == "select") {
-                        let select_value = $('[name="' + key + '"]').val().map(Number);
-                        formData.append(key, JSON.stringify(select_value));
+                        let mult = $('[name="' + key + '"]').attr('multiple');
+                        console.log(mult);
+                        if (mult != undefined) {
+                            let select_value = $('[name="' + key + '"]').val().map(Number);
+                            formData.append(key, JSON.stringify(select_value));
+                        } else {
+                            let select_value = $('[name="' + key + '"] option:selected').text();
+                            console.log("ddd");
+                            formData.append(key, select_value);
+                        }
                     }
                     else if (schema.properties[key].type == "array") {
                         console.log(values[key]);
@@ -191,41 +237,25 @@
             }
 
             if (f.hasOwnProperty('select')) {
-                $.ajax({
-                    url: "http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column,
-                    type: "get",
-                    processData: false,
-                    contentType: false,
-                    success: function (response) {
-                        let result = JSON.parse(response);
+                console.log(f.key);
+                display_selects("http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column, f);
 
-                        let dropdown = $('[name="' + f.key + '"]');
-                        if (f.select.multiple) {
-                            dropdown.attr("multiple", "multiple").select2();
-                        }
-                        dropdown.empty();   
-                        for (let i = 0; i < result.length; i++) {
-                            console.log(result[i]);
-                            let option = $("<option>", {
-                                value: parseInt(result[i].id),
-                                text: result[i].item,
-                            });
+                if (f.select.dynamic_fetch == true) {
+                    console.log(f.select);
+                    let parent_select = $('[name="' + f.select.ref_fetch_key + '"]');
 
-                            if (Object.keys(value).length > 0) {
-                                for (let j = 0; j < value[0][f.key].length; j++) {
+                    parent_select.on('change', function () {
+                        let selected_text = $('[name="' + f.select.ref_fetch_key + '"] option:selected').text();
 
-                                    if (value[0][f.key][j] == parseInt(result[i].id)) {
-                                        option.attr("selected", "selected");
-                                    }
-                                }
-                            }
-                            dropdown.append(option);
-                        }
-                    },
-                    error: function (jqXHR, textStatus, errorThrown) { console.error(jqXHR); },
-                });
+                        display_selects("http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column + "/" + f.select.ref_fetch_target + "/" + selected_text, f);
+                    });
+                    // console.log(select_value);
+
+                    // console.log(parent_select.values);
+
+                }
             }
-            console.log(file_arr);
+            // console.log(file_arr);
         }
     </script>
 </body>
