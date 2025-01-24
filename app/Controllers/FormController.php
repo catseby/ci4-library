@@ -236,6 +236,7 @@ class FormController extends BaseController
     private function getForm($results, $button_title)
     {
         $form = [];
+        $tabs = [];
 
         foreach ($results as $index => $result) {
 
@@ -273,7 +274,7 @@ class FormController extends BaseController
                             'column' => $result['ref_column_name']
                         ]
                     ];
-                    
+
                     if ($result['dynamic_fetch'] == 't') {
                         $field['select']['ref_fetch_key'] = $result['ref_fetch_key'];
                         $field['select']['ref_fetch_target'] = $result['ref_fetch_target'];
@@ -297,11 +298,51 @@ class FormController extends BaseController
                     ];
             }
 
-            array_push($form, $field);
+            if ($result["form_tab"] == null) {
+                array_push($form, $field);
 
-            if ($extraField) {
-                array_push($form, $extraField);
+                if ($extraField) {
+                    array_push($form, $extraField);
+                }
+            } else {
+
+                if (!array_key_exists($result["form_tab"], $tabs)) {
+                    $tabs[$result['form_tab']] = [];
+                }
+
+                array_push($tabs[$result['form_tab']], $field);
+
+                if ($extraField) {
+                    array_push($tabs[$result['form_tab']], $extraField);
+                }
             }
+        }
+
+        if ($tabs) {
+
+            $fieldset = [
+                "type" => "fieldset",
+                "items" => [[
+                    "type" => "tabs",
+                    'id' => "navtabs",
+                    "items" => []
+                ]]
+            ];
+
+            foreach ($tabs as $key => $tab) {
+                $newTab = [
+                    "type" => "tab",
+                    "title" => $key,
+                    "items" => $tab
+                ];
+
+                array_push($fieldset["items"][0]["items"], $newTab);
+            }
+
+            log_message("debug", json_encode($fieldset));
+
+            array_push($form,$fieldset);
+
         }
 
         array_push(

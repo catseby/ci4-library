@@ -4,7 +4,7 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class SchemaTypeMetadata extends Migration
+class ColumnMetadata extends Migration
 {
     public function up()
     {
@@ -15,18 +15,22 @@ class SchemaTypeMetadata extends Migration
                 'unsigned' => true,
                 'auto_increment' => true,
             ],
-            'schema_type' => [
+            'table_name' => [
+                'type' => 'VARCHAR',
+                'constraint' => 255
+            ],
+            'column_name' => [
                 'type' => 'VARCHAR',
                 'constraint' => 255
             ]
         ]);
 
         $this->forge->addKey('id', true);
-        $this->forge->createTable('schema_type_metadata');
+        $this->forge->createTable('column_metadata');
     }
 
     public function down()
     {
-        $this->forge->dropTable('schema_type_metadata');
+        $this->forge->dropTable('column_metadata');
     }
 }

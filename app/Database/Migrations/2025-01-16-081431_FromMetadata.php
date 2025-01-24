@@ -28,6 +28,11 @@ class FromMetadata extends Migration
                 'constraint' => 255,
                 'null' => true
             ],
+            'inline_title' => [
+                'type' => 'VARCHAR',
+                'constraint' => 255,
+                'null' => true
+            ],
             'schema_type' => [
                 'type' => 'VARCHAR',
                 'constraint' => 255
@@ -43,7 +48,8 @@ class FromMetadata extends Migration
             ],
             'order_position' => [
                 'type' => 'INT',
-                'constraint' => 11
+                'constraint' => 11,
+                'auto_increment' => true
             ],
             'ref_table_name' => [
                 'type' => 'VARCHAR',

@@ -18,10 +18,6 @@ class TableMetadata extends Migration
             'table_name' => [
                 'type' => 'VARCHAR',
                 'constraint' => 255
-            ],
-            'column_name' => [
-                'type' => 'VARCHAR',
-                'constraint' => 255
             ]
         ]);
 

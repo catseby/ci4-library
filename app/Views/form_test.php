@@ -120,16 +120,50 @@
             });
         }
 
-        // Pirms formas noformatēšana=================
-        //====================================
+        function form_configure(f) {
+            if (f.hasOwnProperty('image')) {
+                async function createFileFromUrl(url, fileName) {
+                    const resp = await fetch(url);
+                    const blob = await resp.blob();
+                    const file = new File([blob], fileName, {
+                        type: blob.type,
+                    });
+                    return file;
+                }
+
+
+                for (let j = 0; j < value.length; j++) {
+                    let filename = value[j][f.key];
+                    createFileFromUrl("http://localhost:8080/uploads/" + filename, filename)
+                        .then((new_file) => {
+                            file_arr.push(new_file);
+                            display_images(new_file, false);
+                        })
+                        .catch((error) => console.error("Error creating file:", error));
+                }
+            }
+
+            if (f.hasOwnProperty('select')) {
+                console.log(f.key);
+                display_selects("http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column, f);
+
+                if (f.select.dynamic_fetch == true) {
+                    console.log(f.select);
+                    let parent_select = $('[name="' + f.select.ref_fetch_key + '"]');
+
+                    parent_select.on('change', function () {
+                        let selected_text = $('[name="' + f.select.ref_fetch_key + '"] option:selected').text();
+
+                        display_selects("http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column + "/" + f.select.ref_fetch_target + "/" + selected_text, f);
+                    });
+                }
+            }
+        }
 
         let multi_keys = [];
-        for (let i = 0; i < form.length; i++) {
-            let f = form[i];
-
+        function form_prepare(f) {
             if (f.hasOwnProperty('image')) {
                 f.onChange = function () {
-                    console.log("change");
                     let files = document.getElementsByName(f.key)[0].files;
                     for (let j = 0; j < files.length; j++) {
                         let file = files[j];
@@ -140,6 +174,25 @@
                 if (f.image.multiple) {
                     multi_keys.push(f.key);
                 }
+            }
+        }
+
+        // Pirms formas noformatēšana=================
+        //====================================
+
+        for (let i = 0; i < form.length; i++) {
+            let f = form[i];
+
+            if (f.type == 'fieldset') {
+                for (let j = 0; j < f.items[0].items.length; j++) {
+                    for (let k = 0; k < f.items[0].items[j].items.length; k++) {
+                        let n_f = f.items[0].items[j].items[k];
+                        form_prepare(n_f);
+                    }
+                }
+            }
+            else {
+                form_prepare(f);
             }
         }
 
@@ -214,46 +267,16 @@
         for (let i = 0; i < form.length; i++) {
             let f = form[i];
 
-            if (f.hasOwnProperty('image')) {
-                async function createFileFromUrl(url, fileName) {
-                    const resp = await fetch(url);
-                    const blob = await resp.blob();
-                    const file = new File([blob], fileName, {
-                        type: blob.type,
-                    });
-                    return file;
-                }
-
-
-                for (let j = 0; j < value.length; j++) {
-                    let filename = value[j][f.key];
-                    createFileFromUrl("http://localhost:8080/uploads/" + filename, filename)
-                        .then((new_file) => {
-                            file_arr.push(new_file);
-                            display_images(new_file, false);
-                        })
-                        .catch((error) => console.error("Error creating file:", error));
+            if (f.type == 'fieldset') {
+                for (let j = 0; j < f.items[0].items.length; j++) {
+                    for (let k = 0; k < f.items[0].items[j].items.length; k++) {
+                        let n_f = f.items[0].items[j].items[k];
+                        form_configure(n_f);
+                    }
                 }
             }
-
-            if (f.hasOwnProperty('select')) {
-                console.log(f.key);
-                display_selects("http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column, f);
-
-                if (f.select.dynamic_fetch == true) {
-                    console.log(f.select);
-                    let parent_select = $('[name="' + f.select.ref_fetch_key + '"]');
-
-                    parent_select.on('change', function () {
-                        let selected_text = $('[name="' + f.select.ref_fetch_key + '"] option:selected').text();
-
-                        display_selects("http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column + "/" + f.select.ref_fetch_target + "/" + selected_text, f);
-                    });
-                    // console.log(select_value);
-
-                    // console.log(parent_select.values);
-
-                }
+            else {
+                form_configure(f);
             }
             // console.log(file_arr);
         }
