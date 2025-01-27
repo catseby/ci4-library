@@ -23,8 +23,8 @@ $routes->get('/forms/(:segment)/fetch/(:segment)/(:segment)/(:segment)', 'FormCo
 $routes->get('/forms/(:segment)/add', 'FormController::index/$1');
 $routes->post('/forms/(:segment)/add', 'FormController::add/$1');
 
-$routes->get('/forms/(:alpha)/edit/(:num)', 'FormController::edit/$1/$2/id');
-$routes->get('/forms/(:alpha)/edit/(:num)/(:segment)', 'FormController::edit/$1/$2/$3');
+$routes->get('/forms/(:segment)/edit/(:num)', 'FormController::edit/$1/$2/id');
+$routes->get('/forms/(:segment)/edit/(:num)/(:segment)', 'FormController::edit/$1/$2/$3');
 
 $routes->post('/forms/(:alpha)/edit/(:num)', 'FormController::update/$1/$2/id');
 $routes->post('/forms/(:alpha)/edit/(:num)/(:segment)', 'FormController::update/$1/$2/$3');

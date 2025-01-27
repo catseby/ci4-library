@@ -61,6 +61,14 @@ class FromMetadata extends Migration
                 'constraint' => 255,
                 'null' => true
             ],
+            'required' => [
+                'type' => 'BOOL',
+                'default' => false
+            ],
+            'hidden' => [
+                'type' => 'BOOL',
+                'default' => false
+            ],
             'dynamic_fetch' => [
                 'type' => 'BOOL',
                 'default' => false
