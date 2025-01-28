@@ -82,6 +82,20 @@ class FromMetadata extends Migration
                 'type' => 'VARCHAR',
                 'constraint' => 255,
                 'null' => true
+            ],
+            'to_foreign' => [
+                'type' => 'BOOL',
+                'default' => false
+            ],
+            'f_table' => [
+                'type' => 'VARCHAR',
+                'constraint' => 255,
+                'null' => true
+            ],
+            'f_primary_key' => [
+                'type' => 'VARCHAR',
+                'constraint' => 255,
+                'null' => true
             ]
         ]);
 

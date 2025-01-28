@@ -38,13 +38,15 @@ class FormController extends BaseController
 
         $schema = $this->getSchema($table, $results);
         $form = $this->getForm($results, "Create");
+        $links = $this->getLinks($results, "add");
 
-        $link = $table . '/add/';
+        log_message("debug", json_encode($links));
+        
         $data = [
             'name' => $table,
             'schema' => json_encode($schema),
             'form' => json_encode($form),
-            'link' => $link,
+            'links' => json_encode($links),
             'type' => 'post',
             'values' => '{}'
         ];
@@ -58,6 +60,7 @@ class FormController extends BaseController
         $post = $this->request->getPost();
 
         $db = db_connect();
+        $id;
 
         if (count($files) > 0) {
             foreach ($files['files'] as $file) {
@@ -70,24 +73,31 @@ class FormController extends BaseController
                 foreach ($post as $key => $value) {
                     if ($value == "?filename") {
                         $data[$key] = $filename;
-                    } else {
+                    } else if ($value != 'undefined') {
                         $data[$key] = $value;
                     }
                 }
 
                 $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
                 $db->query($query, array_values($data));
+                $id = $db->insertID();
             }
         } else {
             $data = [];
             foreach ($post as $key => $value) {
-                $data[$key] = $value;
+                if ($value != 'undefined') {
+                    $data[$key] = $value;
+                }
             }
 
 
             $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
-            $db->query($query, array_values($data));
+            $query = $db->query($query, array_values($data));
+            $id = $db->insertID();
         }
+
+        log_message("debug", $id);
+        return json_encode(['id' => $id]);
     }
 
     public function edit($table, $index, $column)
@@ -146,6 +156,8 @@ class FormController extends BaseController
                 foreach ($post as $key => $value) {
                     if ($value == "?filename") {
                         $data[$key] = $filename;
+                    } else if ($value != 'undefined') {
+                        $data[$key] = null;
                     } else {
                         $data[$key] = $value;
                     }
@@ -199,6 +211,13 @@ class FormController extends BaseController
         foreach ($results as $index => $result) {
 
             $property;
+            $required;
+
+            if ($result['required'] == "t") {
+                $required = true;
+            } else {
+                $required = false;
+            }
 
             switch ($result['schema_type']) {
                 case 'array':
@@ -206,23 +225,24 @@ class FormController extends BaseController
                         'type' => $result['schema_type'],
                         'title' => $result['column_title'],
                         "items" => [
-                            "type" => "string"
-                        ],
-                        'required' => true
+                            "type" => "string",
+                            'required' => $required
+                        ]
                     ];
                     break;
                 case 'image':
                     $property = [
                         'type' => 'file',
                         'title' => $result['column_title'],
-                        'image' => true
+                        'image' => true,
+                        'required' => $required
                     ];
                     break;
                 default:
                     $property = [
                         'type' => $result['schema_type'],
                         'title' => $result['column_title'],
-                        'required' => true
+                        'required' => $required
                     ];
                     break;
             }
@@ -322,11 +342,13 @@ class FormController extends BaseController
 
             $fieldset = [
                 "type" => "fieldset",
-                "items" => [[
-                    "type" => "tabs",
-                    'id' => "navtabs",
-                    "items" => []
-                ]]
+                "items" => [
+                    [
+                        "type" => "tabs",
+                        'id' => "navtabs",
+                        "items" => []
+                    ]
+                ]
             ];
 
             foreach ($tabs as $key => $tab) {
@@ -341,7 +363,7 @@ class FormController extends BaseController
 
             log_message("debug", json_encode($fieldset));
 
-            array_push($form,$fieldset);
+            array_push($form, $fieldset);
 
         }
 
@@ -354,5 +376,44 @@ class FormController extends BaseController
         );
 
         return $form;
+    }
+
+    private function getLinks($results, $type)
+    {
+        $t_links = [];
+        foreach ($results as $index => $result) {
+
+            if ($result["to_foreign"] == 't') {
+                if (!array_key_exists($result['f_table'],$t_links)) {
+                    $t_links[$result["f_table"]] = [
+                        'table' => $result['f_table'],
+                        'type' => $type,
+                        'keys' => [$result['column_name']],
+                        'param' => $result['f_primary_key']
+                    ];
+                } else {
+                    array_push($t_links[$result['f_table']]['keys'], $result['column_name']);
+                }
+
+            } else {
+                if (!array_key_exists($result['table_name'],$t_links)) {
+                    $t_links[$result["table_name"]] = [
+                        'table' => $result['table_name'],
+                        'type' => $type,
+                        'keys' => [$result['column_name']],
+                        'param' => 'id'
+                    ];
+                } else {
+                    array_push($t_links[$result['table_name']]['keys'], $result['column_name']);
+                }
+            }
+        }
+
+        $links = [];
+        foreach ($t_links as $key => $value) {
+            array_push($links,$value);
+        }
+
+        return $links;
     }
 }

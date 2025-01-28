@@ -27,6 +27,7 @@
         let schema = <?php echo $schema; ?>;
         let form = <?php echo $form; ?>;
         let value = <?php echo $values; ?>;
+        let links = <?php echo $links; ?>;
         let file_arr = [];
 
         function display_images(file, reset = true) {
@@ -177,6 +178,72 @@
             }
         }
 
+        function submit(i, values, extra, fk) {
+            let link = links[i];
+
+            let formData = new FormData();
+
+            if (fk != null) {
+                formData.append(link.param, fk);
+            }
+
+            for (let i = 0; i < Object.keys(schema.properties).length; i++) {
+                let key = Object.keys(schema.properties)[i];
+
+                if (link.keys.includes(key)) {
+                    if (schema.properties[key].type == "file") {
+                        // let files = document.getElementsByName(key)[0].files;
+                        for (let j = 0; j < file_arr.length; j++) {
+                            formData.append("files[]", file_arr[j]);
+
+                            formData.append(key, "?filename");
+                        }
+                    }
+                    else if (schema.properties[key].type == "select") {
+                        let mult = $('[name="' + key + '"]').attr('multiple');
+                        if (mult != undefined) {
+                            let select_value = $('[name="' + key + '"]').val().map(Number);
+                            formData.append(key, JSON.stringify(select_value));
+                        } else {
+                            let select_value = $('[name="' + key + '"] option:selected').text();
+                            formData.append(key, select_value);
+                        }
+                    }
+                    else if (schema.properties[key].type == "array") {
+                        formData.append(key, JSON.stringify(values[key]));
+                    }
+                    else {
+                        let value = values[key];
+                        formData.append(key, value);
+                    }
+                }
+            }
+
+            $.ajax({
+                url: "http://localhost:8080/forms/" + link.table + "/" + link.type + extra,
+                type: "post",
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (response) {
+                    let resp = JSON.parse(response);
+                    if (links.length - 1 > i) {
+                        let x = "";
+                        if (link.type != "add") {
+                            x = "/" + resp.id + "/" + links[i + 1].param;
+                        }
+                        submit(i + 1, values, x, resp.id);
+                        // console.log(extra);
+                    }
+                    console.log(resp);
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.error(jqXHR);
+                    console.error(textStatus);
+                    console.error(errorThrown);
+                },
+            });
+        }
         // Pirms formas noformatēšana=================
         //====================================
 
@@ -198,62 +265,12 @@
 
         //Formas ģenerēšana ==============================
         //===========================================
-
         $("#test-form").jsonForm({
             schema: schema,
             form: form,
             value: value[0],
             "onSubmitValid": function (values) {
-                let formData = new FormData();
-
-                for (let i = 0; i < Object.keys(schema.properties).length; i++) {
-                    let key = Object.keys(schema.properties)[i];
-                    console.log(key);
-
-                    if (schema.properties[key].type == "file") {
-                        // let files = document.getElementsByName(key)[0].files;
-                        for (let j = 0; j < file_arr.length; j++) {
-                            formData.append("files[]", file_arr[j]);
-
-                            formData.append(key, "?filename");
-                        }
-                    }
-                    else if (schema.properties[key].type == "select") {
-                        let mult = $('[name="' + key + '"]').attr('multiple');
-                        console.log(mult);
-                        if (mult != undefined) {
-                            let select_value = $('[name="' + key + '"]').val().map(Number);
-                            formData.append(key, JSON.stringify(select_value));
-                        } else {
-                            let select_value = $('[name="' + key + '"] option:selected').text();
-                            console.log("ddd");
-                            formData.append(key, select_value);
-                        }
-                    }
-                    else if (schema.properties[key].type == "array") {
-                        console.log(values[key]);
-                        formData.append(key, JSON.stringify(values[key]));
-                    }
-                    else {
-                        let value = values[key];
-                        formData.append(key, value);
-                    }
-                }
-
-
-                $.ajax({
-                    url: "http://localhost:8080/forms/" + "<?= esc($link) ?>",
-                    type: "post",
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function (response) { console.log(values) },
-                    error: function (jqXHR, textStatus, errorThrown) {
-                        console.error(jqXHR);
-                        console.error(textStatus);
-                        console.error(errorThrown);
-                    },
-                });
+                submit(0, values, "", null);
             }
         });
 
