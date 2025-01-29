@@ -109,13 +109,23 @@ class FormController extends BaseController
         $schema = $this->getSchema($table, $template);
         $form = $this->getForm($template, "Save");
         $links = $this->getLinks($template, "edit", $index);
+        
+        $joins = $this->getJoins($template);
 
 
         $db = db_connect();
 
-        $sql = 'SELECT * FROM public.' . $table . ' WHERE ' . $column . ' = ' . $index;
+        $sql = 'SELECT * FROM public.' . $table . " ";
+        foreach ($joins as $i=> $join) {
+            $sql = $sql . "LEFT JOIN public." . $join["table"] . " ON " . $join["table"] . "." . $join["key"] . " = " . $table . ".id ";
+        }
+        $sql = $sql . 'WHERE ' . $table . "." . $column . ' = ' . $index . ";";
+
         $query = $db->query($sql);
         $result = $query->getResultArray();
+
+        log_message("debug", $sql);
+        log_message("debug", json_encode($result));
 
         foreach ($result[0] as $key => $value) {
             $decoded = json_decode($value, true);
@@ -454,5 +464,18 @@ class FormController extends BaseController
         }
 
         return $links;
+    }
+
+    private function getJoins($results) {
+        $joins = [];
+        foreach ($results as $key => $result) {
+            if ($result["to_foreign"] == "t") {
+                array_push($joins,[
+                    "table" => $result["f_table"],
+                    "key" => $result["f_primary_key"]
+                ]);
+            }
+        }
+        return $joins;
     }
 }
