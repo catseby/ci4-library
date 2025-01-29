@@ -41,7 +41,7 @@ class FormController extends BaseController
         $links = $this->getLinks($results, "add");
 
         log_message("debug", json_encode($links));
-        
+
         $data = [
             'name' => $table,
             'schema' => json_encode($schema),
@@ -58,9 +58,10 @@ class FormController extends BaseController
     {
         $files = $this->request->getFiles();
         $post = $this->request->getPost();
+        $id = null;
+
 
         $db = db_connect();
-        $id;
 
         if (count($files) > 0) {
             foreach ($files['files'] as $file) {
@@ -107,6 +108,8 @@ class FormController extends BaseController
 
         $schema = $this->getSchema($table, $template);
         $form = $this->getForm($template, "Save");
+        $links = $this->getLinks($template, "edit", $index);
+
 
         $db = db_connect();
 
@@ -121,12 +124,11 @@ class FormController extends BaseController
             }
         }
 
-        $link = $table . '/edit/' . $index . '/' . $column;
         $data = [
             'name' => $table,
             'schema' => json_encode($schema),
             'form' => json_encode($form),
-            'link' => $link,
+            'links' => json_encode($links),
             'type' => 'post',
             'values' => json_encode($result)
         ];
@@ -157,27 +159,31 @@ class FormController extends BaseController
                     if ($value == "?filename") {
                         $data[$key] = $filename;
                     } else if ($value != 'undefined') {
-                        $data[$key] = null;
-                    } else {
                         $data[$key] = $value;
                     }
                     $keys[] = $key . " = ?";
                 }
                 $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
                 $db->query($query, array_values($data));
+
             }
         } else {
             $data = [];
             $keys = [];
             foreach ($post as $key => $value) {
-                $data[$key] = $value;
+                if ($value != 'undefined') {
+                    $data[$key] = $value;
+                }
                 $keys[] = $key . " = ?";
             }
 
 
             $sql = 'UPDATE public.' . $name . ' SET ' . implode(',', $keys) . ' WHERE ' . $column . ' = ' . $index;
             $db->query($sql, array_values($data));
+
         }
+
+        return json_encode(['id' => $index]);
     }
 
     public function destroy($name, $index, $column)
@@ -198,6 +204,36 @@ class FormController extends BaseController
 
         return view("form_test", $data);
 
+    }
+
+    public function destroy_with_files($name, $index, $column) {
+        $db = db_connect();
+
+        $sql1 = "SELECT column_name ". 
+        "FROM information_schema.columns ". 
+        "WHERE table_schema = 'public' ". 
+        "AND table_name = '" . $name . "' ". 
+        "AND domain_name IN ('image') ". 
+        "ORDER BY table_name, ordinal_position;";
+
+        $sql2 = 'SELECT * FROM public.' . $name . ' WHERE ' . $column . ' = ' . $index;
+
+        $sql3 = 'DELETE FROM public.' . $name . ' WHERE '. $column . ' = ' . $index;
+
+        $valid_column_arr = $db->query($sql1)->getResultArray();
+        $results = $db->query($sql2)->getResultArray();
+
+        
+        foreach($valid_column_arr as $valid_column_key => $valid_column) 
+        {
+            $column_name = $valid_column['column_name'];
+            log_message("debug", $column_name);
+            foreach($results as $key => $result) {
+                unlink("./uploads/" . $result[$column_name]);
+            }
+        }
+
+        $db->query($sql3);
     }
 
     private function getSchema($table, $results)
@@ -378,30 +414,33 @@ class FormController extends BaseController
         return $form;
     }
 
-    private function getLinks($results, $type)
+    private function getLinks($results, $type, $id = null)
     {
         $t_links = [];
         foreach ($results as $index => $result) {
 
             if ($result["to_foreign"] == 't') {
-                if (!array_key_exists($result['f_table'],$t_links)) {
+
+                if (!array_key_exists($result['f_table'], $t_links)) {
                     $t_links[$result["f_table"]] = [
                         'table' => $result['f_table'],
                         'type' => $type,
                         'keys' => [$result['column_name']],
-                        'param' => $result['f_primary_key']
+                        'param' => $result['f_primary_key'],
+                        'index' => $id
                     ];
                 } else {
                     array_push($t_links[$result['f_table']]['keys'], $result['column_name']);
                 }
 
             } else {
-                if (!array_key_exists($result['table_name'],$t_links)) {
+                if (!array_key_exists($result['table_name'], $t_links)) {
                     $t_links[$result["table_name"]] = [
                         'table' => $result['table_name'],
                         'type' => $type,
                         'keys' => [$result['column_name']],
-                        'param' => 'id'
+                        'param' => 'id',
+                        'index' => $id
                     ];
                 } else {
                     array_push($t_links[$result['table_name']]['keys'], $result['column_name']);
@@ -411,7 +450,7 @@ class FormController extends BaseController
 
         $links = [];
         foreach ($t_links as $key => $value) {
-            array_push($links,$value);
+            array_push($links, $value);
         }
 
         return $links;

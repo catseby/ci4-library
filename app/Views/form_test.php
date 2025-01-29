@@ -219,8 +219,11 @@
                 }
             }
 
+
+            console.log("http://localhost:8080/forms/" + link.table + "/" + link.type + "/" + link.index + extra);
+            
             $.ajax({
-                url: "http://localhost:8080/forms/" + link.table + "/" + link.type + extra,
+                url: "http://localhost:8080/forms/" + link.table + "/" + link.type + "/" + link.index + extra,
                 type: "post",
                 data: formData,
                 processData: false,
@@ -228,12 +231,13 @@
                 success: function (response) {
                     let resp = JSON.parse(response);
                     if (links.length - 1 > i) {
+                        console.log("AAAAAAAAAAAAAAAAAA");
                         let x = "";
                         if (link.type != "add") {
-                            x = "/" + resp.id + "/" + links[i + 1].param;
+                            x = "/" + links[i + 1].param;
                         }
+                        console.log(x);
                         submit(i + 1, values, x, resp.id);
-                        // console.log(extra);
                     }
                     console.log(resp);
                 },
