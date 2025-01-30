@@ -109,14 +109,14 @@ class FormController extends BaseController
         $schema = $this->getSchema($table, $template);
         $form = $this->getForm($template, "Save");
         $links = $this->getLinks($template, "edit", $index);
-        
+
         $joins = $this->getJoins($template);
 
 
         $db = db_connect();
 
         $sql = 'SELECT * FROM public.' . $table . " ";
-        foreach ($joins as $i=> $join) {
+        foreach ($joins as $i => $join) {
             $sql = $sql . "LEFT JOIN public." . $join["table"] . " ON " . $join["table"] . "." . $join["key"] . " = " . $table . ".id ";
         }
         $sql = $sql . 'WHERE ' . $table . "." . $column . ' = ' . $index . ";";
@@ -216,29 +216,29 @@ class FormController extends BaseController
 
     }
 
-    public function destroy_with_files($name, $index, $column) {
+    public function destroy_with_files($name, $index, $column)
+    {
         $db = db_connect();
 
-        $sql1 = "SELECT column_name ". 
-        "FROM information_schema.columns ". 
-        "WHERE table_schema = 'public' ". 
-        "AND table_name = '" . $name . "' ". 
-        "AND domain_name IN ('image') ". 
-        "ORDER BY table_name, ordinal_position;";
+        $sql1 = "SELECT column_name " .
+            "FROM information_schema.columns " .
+            "WHERE table_schema = 'public' " .
+            "AND table_name = '" . $name . "' " .
+            "AND domain_name IN ('image') " .
+            "ORDER BY table_name, ordinal_position;";
 
         $sql2 = 'SELECT * FROM public.' . $name . ' WHERE ' . $column . ' = ' . $index;
 
-        $sql3 = 'DELETE FROM public.' . $name . ' WHERE '. $column . ' = ' . $index;
+        $sql3 = 'DELETE FROM public.' . $name . ' WHERE ' . $column . ' = ' . $index;
 
         $valid_column_arr = $db->query($sql1)->getResultArray();
         $results = $db->query($sql2)->getResultArray();
 
-        
-        foreach($valid_column_arr as $valid_column_key => $valid_column) 
-        {
+
+        foreach ($valid_column_arr as $valid_column_key => $valid_column) {
             $column_name = $valid_column['column_name'];
             log_message("debug", $column_name);
-            foreach($results as $key => $result) {
+            foreach ($results as $key => $result) {
                 unlink("./uploads/" . $result[$column_name]);
             }
         }
@@ -284,6 +284,14 @@ class FormController extends BaseController
                         'required' => $required
                     ];
                     break;
+                case 'file':
+                    $property = [
+                        'type' => 'file',
+                        'title' => $result['column_title'],
+                        'file' => true,
+                        'required' => $required
+                    ];
+                    break;
                 default:
                     $property = [
                         'type' => $result['schema_type'],
@@ -310,26 +318,74 @@ class FormController extends BaseController
             $extraField = [];
 
             switch ($result['form_type']) {
+                case "file":
+                    $field = [
+                        'key' => $result['column_name'],
+                        'file' => []
+                    ];
+                    $extraField = [
+                        [
+                            "id" => "file-display",
+                            "type" => "section"
+                        ],
+                        [
+                            "id" => "image-display",
+                            "type" => "section"
+                        ]
+                    ];
+                    break;
+                case "file-multiple":
+                    $field = [
+                        'key' => $result['column_name'],
+                        'file' => [
+                            "multiple" => true
+                        ]
+                    ];
+                    $extraField = [
+                        [
+                            "id" => "file-display",
+                            "type" => "section"
+                        ],
+                        [
+                            "id" => "image-display",
+                            "type" => "section"
+                        ]
+                    ];
+                    break;
                 case "image":
                     $field = [
                         'key' => $result['column_name'],
+                        'accept' => '.png,.jpg',
                         'image' => []
                     ];
                     $extraField = [
-                        "id" => "image-display",
-                        "type" => "section"
+                        [
+                            "id" => "file-display",
+                            "type" => "section"
+                        ],
+                        [
+                            "id" => "image-display",
+                            "type" => "section"
+                        ]
                     ];
                     break;
                 case "image-multiple":
                     $field = [
                         'key' => $result['column_name'],
+                        'accept' => '.png,.jpg',
                         'image' => [
                             'multiple' => true
                         ]
                     ];
                     $extraField = [
-                        "id" => "image-display",
-                        "type" => "section"
+                        [
+                            "id" => "file-display",
+                            "type" => "section"
+                        ],
+                        [
+                            "id" => "image-display",
+                            "type" => "section"
+                        ]
                     ];
                     break;
                 case "select":
@@ -368,7 +424,7 @@ class FormController extends BaseController
                 array_push($form, $field);
 
                 if ($extraField) {
-                    array_push($form, $extraField);
+                    array_push($form, $extraField[0], $extraField[1]);
                 }
             } else {
 
@@ -379,7 +435,7 @@ class FormController extends BaseController
                 array_push($tabs[$result['form_tab']], $field);
 
                 if ($extraField) {
-                    array_push($tabs[$result['form_tab']], $extraField);
+                    array_push($tabs[$result['form_tab']], $extraField[0], $extraField[1]);
                 }
             }
         }
@@ -466,11 +522,12 @@ class FormController extends BaseController
         return $links;
     }
 
-    private function getJoins($results) {
+    private function getJoins($results)
+    {
         $joins = [];
         foreach ($results as $key => $result) {
             if ($result["to_foreign"] == "t") {
-                array_push($joins,[
+                array_push($joins, [
                     "table" => $result["f_table"],
                     "key" => $result["f_primary_key"]
                 ]);

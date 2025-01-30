@@ -31,18 +31,15 @@
         let file_arr = [];
 
         function display_images(file, reset = true) {
-
+            console.log(file);
             if (reset) {
                 document.getElementById("image-display").innerHTML = " ";
             }
+
             let container = document.createElement("div");
             container.style.position = 'relative';
-            container.style.display = 'inline-block';
+            container.style.display = 'block';
             container.style.margin = '10px';
-
-            let image = document.createElement("img");
-            image.width = 128;
-            image.style.display = 'block';
 
             let closeButton = document.createElement("button");
             closeButton.textContent = 'X';
@@ -73,15 +70,74 @@
                 container.remove();
             };
 
-            container.appendChild(image);
-            container.appendChild(closeButton);
-
             const reader = new FileReader();
-            reader.onload = function (e) {
-                image.src = e.target.result;
-                document.getElementById("image-display").appendChild(container);
-            };
-            reader.readAsDataURL(file);
+
+            switch (file.type) {
+                case "image/jpeg": case "image/png":
+
+                    let image = document.createElement("img");
+                    image.width = 312;
+                    image.style.display = 'block';
+
+
+
+                    closeButton.onclick = function (e) {
+                        e.preventDefault();
+                        let parent = container.parentNode
+                        let index = Array.prototype.indexOf.call(
+                            parent.children,
+                            container
+                        );
+                        file_arr.splice(index, 1);
+                        container.remove();
+                    };
+
+                    container.appendChild(image);
+                    container.appendChild(closeButton);
+
+                    reader.onload = function (e) {
+                        image.src = e.target.result;
+                        document.getElementById("image-display").appendChild(container);
+                    };
+
+                    reader.readAsDataURL(file);
+                    break;
+
+                default:
+
+                    let icon = document.createElement("img");
+                    icon.width = 18;
+                    icon.style.display = 'block';
+                    icon.src = "https://www.svgrepo.com/download/89356/blank-file.svg";
+
+                    switch (file.type) {
+                        case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                            icon.src = "https://www.svgrepo.com/show/48996/docx-file-format-symbol.svg";
+                            break;
+                        case "application/pdf":
+                            icon.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Icon_pdf_file.svg/502px-Icon_pdf_file.svg.png";
+                            break;
+                        case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                            icon.src = "https://www.svgrepo.com/show/42291/xlsx-file-format-extension.svg";
+                            break;
+                    }
+
+
+                    let file_name = document.createElement("p");
+                    file_name.innerHTML = file.name;
+
+                    container.appendChild(icon);
+                    container.appendChild(file_name);
+                    container.appendChild(closeButton);
+
+                    reader.onload = function (e) {
+                        // image.src = e.target.result;
+                        document.getElementById("file-display").appendChild(container);
+                    };
+
+                    reader.readAsDataURL(file);
+                    break;
+            }
         }
 
         function display_selects(fetch_link, f) {
@@ -107,8 +163,8 @@
 
                         if (Object.keys(value).length > 0) {
                             for (let j = 0; j < value[0][f.key].length; j++) {
-
-                                if (value[0][f.key][j] == parseInt(result[i].id)) {
+                                // console.log(value[0][f.key]);
+                                if (value[0][f.key][j] == parseInt(result[i].id) || value[0][f.key] == result[i].item) {
                                     option.attr("selected", "selected");
                                 }
                             }
@@ -122,7 +178,7 @@
         }
 
         function form_configure(f) {
-            if (f.hasOwnProperty('image')) {
+            if (f.hasOwnProperty('image') || f.hasOwnProperty("file")) {
                 async function createFileFromUrl(url, fileName) {
                     const resp = await fetch(url);
                     const blob = await resp.blob();
@@ -163,7 +219,7 @@
 
         let multi_keys = [];
         function form_prepare(f) {
-            if (f.hasOwnProperty('image')) {
+            if (f.hasOwnProperty('image') || f.hasOwnProperty('file')) {
                 f.onChange = function () {
                     let files = document.getElementsByName(f.key)[0].files;
                     for (let j = 0; j < files.length; j++) {
@@ -172,7 +228,7 @@
                         display_images(file, false)
                     }
                 }
-                if (f.image.multiple) {
+                if (f.image != undefined && f.image.multiple || f.file != undefined && f.file.multiple) {
                     multi_keys.push(f.key);
                 }
             }
@@ -221,7 +277,7 @@
 
 
             console.log("http://localhost:8080/forms/" + link.table + "/" + link.type + "/" + link.index + extra);
-            
+
             $.ajax({
                 url: "http://localhost:8080/forms/" + link.table + "/" + link.type + "/" + link.index + extra,
                 type: "post",
