@@ -9,6 +9,54 @@ use App\Models\FormModel;
 
 class FormController extends BaseController
 {
+    public function index(){
+        $db = db_connect();
+
+        $table_sql = 'SELECT table_name FROM public.table_metadata;';
+        $table_names = $db->query($table_sql)->getResultArray();
+
+        $data = [];
+
+        foreach ($table_names as $i => $table_name_row) {
+            $table_name = $table_name_row['table_name'];
+
+            // $column_sql = 'SELECT column_name FROM public.column_metadata WHERE table_name = ' . $table_name . ';';
+            // $columns_entries = $db->query($column_sql)->getResultArray();
+
+            // $columns = [];
+
+            // foreach ($columns_entries as $j => $column_entry) {
+            //     array_push($columns, $column_entry['column_name']);
+            // }
+
+            $sql = 'SELECT * FROM public.' . $table_name . ';';
+            $values = $db->query($sql)->getResultArray();
+
+            // log_message("debug", json_encode($values));
+
+            foreach ($values as &$array) {
+                foreach ($array as $key => &$value) {
+                    $decoded = json_decode($value, true);
+                    if ($decoded != null) {
+                        $value = json_decode($value, true);
+                    }
+                }
+            }
+
+            log_message('debug', json_encode($values));
+
+            // $data['tables'][$table_name]['table'] = $table_name;
+            $data['tables'][$table_name]['data'] = $values;
+        }
+        
+        $data['tables'] = json_encode($data['tables']);
+
+        log_message('debug', json_encode($data));
+
+        return view('forms', $data);
+    }
+
+
     public function fetch($table, $column)
     {
         $sql = 'SELECT id, ' . $column . ' AS item FROM public.' . $table . ';';
@@ -31,7 +79,7 @@ class FormController extends BaseController
         return json_encode($result);
     }
 
-    public function index($table)
+    public function add($table)
     {
         $formModel = new FormModel();
         $results = $formModel->getForm($table);
@@ -54,7 +102,7 @@ class FormController extends BaseController
         return view("form_test", $data);
     }
 
-    public function add($name)
+    public function create($name)
     {
         $files = $this->request->getFiles();
         $post = $this->request->getPost();
@@ -124,8 +172,8 @@ class FormController extends BaseController
         $query = $db->query($sql);
         $result = $query->getResultArray();
 
-        log_message("debug", $sql);
-        log_message("debug", json_encode($result));
+        // log_message("debug", $sql);
+        // log_message("debug", json_encode($result));
 
         foreach ($result[0] as $key => $value) {
             $decoded = json_decode($value, true);
@@ -151,6 +199,8 @@ class FormController extends BaseController
     {
         $files = $this->request->getFiles();
         $post = $this->request->getPost();
+
+        log_message("debug", json_encode($post));
 
         $db = db_connect();
 
@@ -183,12 +233,20 @@ class FormController extends BaseController
             foreach ($post as $key => $value) {
                 if ($value != 'undefined') {
                     $data[$key] = $value;
-                }
-                $keys[] = $key . " = ?";
+                    $keys[] = $key . " = ?";
+                }   
+                // else if ($value == 'true') {
+                //     $data[$key] = true;
+                // }
+                // else if ($value == 'false') {
+                //     $data[$key] = false;
+                // }
+                // $keys[] = $key . " = ?";
             }
 
 
             $sql = 'UPDATE public.' . $name . ' SET ' . implode(',', $keys) . ' WHERE ' . $column . ' = ' . $index;
+            log_message("debug", json_encode($data));
             $db->query($sql, array_values($data));
 
         }
@@ -335,8 +393,21 @@ class FormController extends BaseController
                     ];
                     break;
                 case "file-multiple":
+
+                    $db = db_connect();
+                    $file_types = [];
+
+                    foreach(json_decode($result["accepted_files"]) as $index => $id) {
+                        $sql = 'SELECT file_type FROM public.file_type_metadata WHERE id = ' . $id;
+                        $file_type = $db->query($sql)->getResultArray();
+
+                        array_push($file_types, $file_type[0]['file_type']);
+                    }
+
+
                     $field = [
                         'key' => $result['column_name'],
+                        'accept' => implode(',',$file_types),
                         'file' => [
                             "multiple" => true
                         ]
@@ -463,7 +534,7 @@ class FormController extends BaseController
                 array_push($fieldset["items"][0]["items"], $newTab);
             }
 
-            log_message("debug", json_encode($fieldset));
+            // log_message("debug", json_encode($fieldset));
 
             array_push($form, $fieldset);
 

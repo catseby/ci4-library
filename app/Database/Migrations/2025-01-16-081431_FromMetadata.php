@@ -51,6 +51,10 @@ class FromMetadata extends Migration
                 'constraint' => 11,
                 'auto_increment' => true
             ],
+            'accepted_files' => [
+                'type' => 'JSONB',
+                'null' => true
+            ],
             'ref_table_name' => [
                 'type' => 'VARCHAR',
                 'constraint' => 255,

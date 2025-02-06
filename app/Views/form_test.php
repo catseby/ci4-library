@@ -140,7 +140,8 @@
             }
         }
 
-        function display_selects(fetch_link, f) {
+        function display_selects(fetch_link, f, dyn = false) {
+            console.log(fetch_link);
             $.ajax({
                 url: fetch_link,
                 type: "get",
@@ -149,11 +150,13 @@
                 success: function (response) {
                     let result = JSON.parse(response);
 
+
                     let dropdown = $('[name="' + f.key + '"]');
                     if (f.select.multiple) {
                         dropdown.attr("multiple", "multiple").select2();
                     }
                     dropdown.empty();
+
                     for (let i = 0; i < result.length; i++) {
                         // console.log(result[i]);
                         let option = $("<option>", {
@@ -162,6 +165,9 @@
                         });
 
                         if (Object.keys(value).length > 0) {
+                            if (Array.isArray(value[0][f.key]) == false) {
+                                value[0][f.key] = [value[0][f.key]]
+                            }
                             for (let j = 0; j < value[0][f.key].length; j++) {
                                 // console.log(value[0][f.key]);
                                 if (value[0][f.key][j] == parseInt(result[i].id) || value[0][f.key] == result[i].item) {
@@ -201,14 +207,17 @@
             }
 
             if (f.hasOwnProperty('select')) {
-                console.log(f.key);
-                display_selects("http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column, f);
+                // console.log(f.key);
+                // console.log("AAAAAAAAAAAAA");
+                // console.log("http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column);
+                display_selects("http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column, f, false);
 
                 if (f.select.dynamic_fetch == true) {
                     console.log(f.select);
                     let parent_select = $('[name="' + f.select.ref_fetch_key + '"]');
 
                     parent_select.on('change', function () {
+                        console.log("change");
                         let selected_text = $('[name="' + f.select.ref_fetch_key + '"] option:selected').text();
 
                         display_selects("http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column + "/" + f.select.ref_fetch_target + "/" + selected_text, f);
@@ -257,11 +266,16 @@
                     }
                     else if (schema.properties[key].type == "select") {
                         let mult = $('[name="' + key + '"]').attr('multiple');
+                        // console.log($('[name="' + key + '"]').val());
                         if (mult != undefined) {
-                            let select_value = $('[name="' + key + '"]').val().map(Number);
-                            formData.append(key, JSON.stringify(select_value));
+                            if ($('[name="' + key + '"]').val() != null) {
+                                let select_value = $('[name="' + key + '"]').val().map(Number);
+                                console.log(select_value + "AAAAAAAAAARDG");
+                                formData.append(key, JSON.stringify(select_value));
+                            }
                         } else {
                             let select_value = $('[name="' + key + '"] option:selected').text();
+                            console.log(select_value + "BOBOBOBOBO");
                             formData.append(key, select_value);
                         }
                     }
@@ -275,11 +289,13 @@
                 }
             }
 
-
-            console.log("http://localhost:8080/forms/" + link.table + "/" + link.type + "/" + link.index + extra);
+            let save_url = "http://localhost:8080/forms/" + link.table + "/" + link.type;
+            console.log(link);
+            if (link.index != null)
+                save_url = "http://localhost:8080/forms/" + link.table + "/" + link.type + "/" + link.index + extra;
 
             $.ajax({
-                url: "http://localhost:8080/forms/" + link.table + "/" + link.type + "/" + link.index + extra,
+                url: save_url,
                 type: "post",
                 data: formData,
                 processData: false,
@@ -287,7 +303,6 @@
                 success: function (response) {
                     let resp = JSON.parse(response);
                     if (links.length - 1 > i) {
-                        console.log("AAAAAAAAAAAAAAAAAA");
                         let x = "";
                         if (link.type != "add") {
                             x = "/" + links[i + 1].param;
@@ -320,6 +335,26 @@
             }
             else {
                 form_prepare(f);
+            }
+        }
+
+        console.log(schema.properties);
+        if (value.length > 0) {
+            for (let i = 0; i < Object.keys(schema.properties).length; i++) {
+                let key = Object.keys(schema.properties)[i];
+                let f = schema.properties[key];
+
+
+                if (f.type == "boolean") {
+                    let flag = value[0][key];
+
+                    console.log(flag);
+                    if (flag == "t") {
+                        value[0][key] = true;
+                    } else if (flag == "f") {
+                        value[0][key] = false;
+                    }
+                }
             }
         }
 
