@@ -17,6 +17,9 @@ $routes->delete('/books/(:num)', 'BookController::destroy/$1');
 
 $routes->get('/forms', 'FormController::index');
 
+$routes->get('/forms/(:segment)/fetch/all', 'FormController::fetchAll/$1/id/NULL/asc');
+$routes->get('/forms/(:segment)/fetch/(:segment)/(:segment)/(:alpha)', 'FormController::fetchAll/$1/$2/$3/$4');
+
 $routes->get('/forms/(:segment)/fetch/(:segment)', 'FormController::fetch/$1/$2');
 $routes->get('/forms/(:segment)/fetch/(:segment)/(:segment)/(:segment)', 'FormController::fetchWhere/$1/$2/$3/$4');
 
@@ -29,8 +32,8 @@ $routes->get('/forms/(:segment)/edit/(:num)/(:segment)', 'FormController::edit/$
 $routes->post('/forms/(:segment)/edit/(:num)', 'FormController::update/$1/$2/id');
 $routes->post('/forms/(:segment)/edit/(:num)/(:segment)', 'FormController::update/$1/$2/$3');
 
-$routes->get('/forms/(:alpha)/delete/(:num)', 'FormController::destroy/$1/$2/id');
-$routes->get('/forms/(:alpha)/delete/(:num)/(:segment)', 'FormController::destroy/$1/$2/$3');
+$routes->get('/forms/(:segment)/delete/(:num)', 'FormController::destroy/$1/$2/id');
+$routes->get('/forms/(:segment)/delete/(:num)/(:segment)', 'FormController::destroy/$1/$2/$3');
 
 
 

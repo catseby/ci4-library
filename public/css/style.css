@@ -92,3 +92,12 @@ padding: 8px;
 tr:nth-child(even) {
 background-color: #dddddd;
 }
+
+.form-container-div {
+    padding-bottom: 32px;
+}
+
+.form-container-div form {
+    width: 480px;
+}
+

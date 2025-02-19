@@ -19,7 +19,7 @@
 </head>
 
 <body>
-    <div>
+    <div class="form-container-div">
         <h1 style="text-transform:capitalize"><?= esc($name) ?></h1>
         <form action="" id="test-form"></form>
     </div>
@@ -31,7 +31,7 @@
         let file_arr = [];
 
         function display_images(file, reset = true) {
-            console.log(file);
+
             if (reset) {
                 document.getElementById("image-display").innerHTML = " ";
             }
@@ -195,14 +195,17 @@
                 }
 
 
+                console.log(value.length);
                 for (let j = 0; j < value.length; j++) {
-                    let filename = value[j][f.key];
-                    createFileFromUrl("http://localhost:8080/uploads/" + filename, filename)
-                        .then((new_file) => {
-                            file_arr.push(new_file);
-                            display_images(new_file, false);
-                        })
-                        .catch((error) => console.error("Error creating file:", error));
+                    if (value[j][f.key] != null) {
+                        let filename = value[j][f.key];
+                        createFileFromUrl("http://localhost:8080/uploads/" + filename, filename)
+                            .then((new_file) => {
+                                file_arr.push(new_file);    
+                                display_images(new_file, false);
+                            })
+                            .catch((error) => console.error("Error creating file:", error));
+                    }
                 }
             }
 

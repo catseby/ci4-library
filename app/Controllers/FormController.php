@@ -9,7 +9,8 @@ use App\Models\FormModel;
 
 class FormController extends BaseController
 {
-    public function index(){
+    public function index()
+    {
         $db = db_connect();
 
         $table_sql = 'SELECT table_name FROM public.table_metadata;';
@@ -20,19 +21,82 @@ class FormController extends BaseController
         foreach ($table_names as $i => $table_name_row) {
             $table_name = $table_name_row['table_name'];
 
-            // $column_sql = 'SELECT column_name FROM public.column_metadata WHERE table_name = ' . $table_name . ';';
-            // $columns_entries = $db->query($column_sql)->getResultArray();
+            $column_sql = "SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY id ASC;";
+            $columns_entries = $db->query($column_sql)->getResultArray();
 
-            // $columns = [];
+            $alias_words = [];
 
-            // foreach ($columns_entries as $j => $column_entry) {
-            //     array_push($columns, $column_entry['column_name']);
-            // }
+            $alias_words = explode('_', $table_name);
 
-            $sql = 'SELECT * FROM public.' . $table_name . ';';
+            $alias = '';
+            foreach ($alias_words as $word) {
+                $alias .= strtoupper($word[0]);
+            }
+
+
+            $select_values = [];
+            $select_joins = [];
+            $select_groups = [];
+
+            array_push($select_values, $alias . ".id");
+            array_push($select_groups, $alias . ".id");
+
+            foreach ($columns_entries as $j => $column_entry) {
+
+                if ($column_entry['foreign_key'] != null) {
+                    $sub_alias = '';
+                    $sub_alias_words = [];
+                    $sub_alias_words = explode('_', $column_entry["foreign_table"]);
+
+                    foreach ($sub_alias_words as $word) {
+                        $sub_alias .= strtoupper($word[0]);
+                    }
+
+                    $v = "JSON_AGG(" . $sub_alias . "." . $column_entry['foreign_column'] . ") AS " . $column_entry['column_name'];
+                    array_push($select_values, $v);
+
+                    $join = 'LEFT JOIN ' . $column_entry['foreign_table'] . ' ' . $sub_alias . ' ON ' . $alias . '.id = ' . $sub_alias . '.' . $column_entry['foreign_key'];
+
+                    if (in_array($join, $select_joins) == false) {
+                        array_push($select_joins, $join);
+                    }
+
+                } else if ($column_entry['foreign_table']) {
+
+                    $sub_alias = '';
+                    $sub_alias_words = [];
+                    $sub_alias_words = explode('_', $column_entry["foreign_table"]);
+
+                    foreach ($sub_alias_words as $word) {
+                        $sub_alias .= strtoupper($word[0]);
+                    }
+
+                    $v = "JSON_AGG(" . $sub_alias . "." . $column_entry['foreign_column'] . ") AS " . $column_entry['column_name'];
+                    array_push($select_values, $v);
+
+                    $join1 = "LEFT JOIN LATERAL jsonb_array_elements_text(" . $alias . "." . $column_entry["column_name"] . ") AS " . $column_entry["column_name"] . "_id ON TRUE";
+
+                    $join2 = 'LEFT JOIN ' . $column_entry['foreign_table'] . ' ' . $sub_alias . ' ON ' . $sub_alias . '.id = ' . $column_entry["column_name"] . "_id::INTEGER";
+
+                    if (in_array($join1, $select_joins) == false) {
+                        array_push($select_joins, $join1);
+                    }
+
+                    if (in_array($join2, $select_joins) == false) {
+                        array_push($select_joins, $join2);
+                    }
+
+                } else {
+
+                    array_push($select_values, $alias . "." . $column_entry['column_name']);
+                    array_push($select_groups, $alias . "." . $column_entry['column_name']);
+                }
+            }
+
+            $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.id ASC;';
             $values = $db->query($sql)->getResultArray();
 
-            // log_message("debug", json_encode($values));
+
 
             foreach ($values as &$array) {
                 foreach ($array as $key => &$value) {
@@ -43,19 +107,125 @@ class FormController extends BaseController
                 }
             }
 
-            log_message('debug', json_encode($values));
+
 
             // $data['tables'][$table_name]['table'] = $table_name;
             $data['tables'][$table_name]['data'] = $values;
         }
-        
+
         $data['tables'] = json_encode($data['tables']);
 
-        log_message('debug', json_encode($data));
 
         return view('forms', $data);
     }
 
+    public function fetchAll($table, $column, $limit, $asc)
+    {
+        $db = db_connect();
+
+        $data = [];
+
+        $table_name = $table;
+
+        $column_sql = "SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY id ASC;";
+        $columns_entries = $db->query($column_sql)->getResultArray();
+
+        $alias_words = [];
+
+        $alias_words = explode('_', $table_name);
+
+        $alias = '';
+        foreach ($alias_words as $word) {
+            $alias .= strtoupper($word[0]);
+        }
+
+        $select_values = [];
+        $select_joins = [];
+        $select_groups = [];
+
+        array_push($select_values, $alias . ".id");
+        array_push($select_groups, $alias . ".id");
+
+        foreach ($columns_entries as $j => $column_entry) {
+
+            if ($column_entry['foreign_key'] != null) {
+                $sub_alias = '';
+                $sub_alias_words = [];
+                $sub_alias_words = explode('_', $column_entry["foreign_table"]);
+
+                foreach ($sub_alias_words as $word) {
+                    $sub_alias .= strtoupper($word[0]);
+                }
+
+                $v = "JSON_AGG(" . $sub_alias . "." . $column_entry['foreign_column'] . ") AS " . $column_entry['column_name'];
+                array_push($select_values, $v);
+
+                $join = 'LEFT JOIN ' . $column_entry['foreign_table'] . ' ' . $sub_alias . ' ON ' . $alias . '.id = ' . $sub_alias . '.' . $column_entry['foreign_key'];
+
+                if (in_array($join, $select_joins) == false) {
+                    array_push($select_joins, $join);
+                }
+
+            } else if ($column_entry['foreign_table']) {
+
+                $sub_alias = '';
+                $sub_alias_words = [];
+                $sub_alias_words = explode('_', $column_entry["foreign_table"]);
+
+                foreach ($sub_alias_words as $word) {
+                    $sub_alias .= strtoupper($word[0]);
+                }
+
+                $v = "JSON_AGG(" . $sub_alias . "." . $column_entry['foreign_column'] . ") AS " . $column_entry['column_name'];
+                array_push($select_values, $v);
+
+                $join1 = "LEFT JOIN LATERAL jsonb_array_elements_text(" . $alias . "." . $column_entry["column_name"] . ") AS " . $column_entry["column_name"] . "_id ON TRUE";
+
+                $join2 = 'LEFT JOIN ' . $column_entry['foreign_table'] . ' ' . $sub_alias . ' ON ' . $sub_alias . '.id = ' . $column_entry["column_name"] . "_id::INTEGER";
+
+                if (in_array($join1, $select_joins) == false) {
+                    array_push($select_joins, $join1);
+                }
+
+                if (in_array($join2, $select_joins) == false) {
+                    array_push($select_joins, $join2);
+                }
+
+            } else {
+
+                array_push($select_values, $alias . "." . $column_entry['column_name']);
+                array_push($select_groups, $alias . "." . $column_entry['column_name']);
+            }
+        }
+
+        $asc = ($asc === 'asc') ? 'ASC' : 'DESC';;
+
+        $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' '. $asc . ' LIMIT ' . $limit .';';
+        $values = $db->query($sql)->getResultArray();
+
+
+
+        foreach ($values as &$array) {
+            foreach ($array as $key => &$value) {
+                $decoded = json_decode($value, true);
+                if ($decoded != null) {
+                    $value = json_decode($value, true);
+                }
+            }
+        }
+
+
+
+        // $data['tables'][$table_name]['table'] = $table_name;
+        $data= $values;
+
+
+        // $data['tables'] = json_encode($data['tables']);
+
+        log_message('debug', json_encode($data));
+
+        return json_encode($data);
+    }
 
     public function fetch($table, $column)
     {
@@ -234,7 +404,7 @@ class FormController extends BaseController
                 if ($value != 'undefined') {
                     $data[$key] = $value;
                     $keys[] = $key . " = ?";
-                }   
+                }
                 // else if ($value == 'true') {
                 //     $data[$key] = true;
                 // }
@@ -265,7 +435,7 @@ class FormController extends BaseController
             'name' => "Entry from " . $name . ' was deleted.',
             'schema' => '{}',
             'form' => '{}',
-            'link' => "",
+            'links' => '{}',
             'type' => 'get',
             'values' => '{}'
         ];
@@ -397,7 +567,7 @@ class FormController extends BaseController
                     $db = db_connect();
                     $file_types = [];
 
-                    foreach(json_decode($result["accepted_files"]) as $index => $id) {
+                    foreach (json_decode($result["accepted_files"]) as $index => $id) {
                         $sql = 'SELECT file_type FROM public.file_type_metadata WHERE id = ' . $id;
                         $file_type = $db->query($sql)->getResultArray();
 
@@ -407,7 +577,7 @@ class FormController extends BaseController
 
                     $field = [
                         'key' => $result['column_name'],
-                        'accept' => implode(',',$file_types),
+                        'accept' => implode(',', $file_types),
                         'file' => [
                             "multiple" => true
                         ]
