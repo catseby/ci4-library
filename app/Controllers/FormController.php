@@ -116,12 +116,17 @@ class FormController extends BaseController
         $data['tables'] = json_encode($data['tables']);
 
 
-        return view('forms', $data);
+        return view('forms_datatables', $data);
     }
 
-    public function fetchAll($table, $column, $limit, $asc)
+    public function fetchAll($table, $column, $limit, $asc, $pagination)
     {
         $db = db_connect();
+
+        $offset = 0;
+        if ($limit != "NULL") {
+            $offset = ((int) $pagination - 1) * (int) $limit;
+        }
 
         $data = [];
 
@@ -198,9 +203,10 @@ class FormController extends BaseController
             }
         }
 
-        $asc = ($asc === 'asc') ? 'ASC' : 'DESC';;
+        $asc = ($asc === 'asc') ? 'ASC' : 'DESC';
+        ;
 
-        $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' '. $asc . ' LIMIT ' . $limit .';';
+        $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' ' . $asc . ' LIMIT ' . $limit . ' OFFSET ' . $offset . ';';
         $values = $db->query($sql)->getResultArray();
 
 
@@ -217,8 +223,138 @@ class FormController extends BaseController
 
 
         // $data['tables'][$table_name]['table'] = $table_name;
-        $data= $values;
+        $data["data"] = $values;
 
+        $count = $db->query("SELECT count(*) as count FROM public." . $table_name)->getResultArray();
+
+        $data["count"] = $count[0]["count"];
+
+        // $data['tables'] = json_encode($data['tables']);
+
+        log_message('debug', json_encode($data));
+
+        return json_encode($data);
+    }
+
+
+    public function fetchDatatables($table)
+    {
+        $request = service('request');
+
+        $db = db_connect();
+
+        $asc = $request->getPost('draw');
+        $offset = $request->getPost('start');
+        $limit = $request->getPost('length');
+
+        log_message("debug", json_encode([$asc,$offset,$limit]));
+        return;
+
+        $offset = 0;
+        if ($limit != "NULL") {
+            $offset = ((int) $pagination - 1) * (int) $limit;
+        }
+
+        $data = [];
+
+        $table_name = $table;
+
+        $column_sql = "SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY id ASC;";
+        $columns_entries = $db->query($column_sql)->getResultArray();
+
+        $alias_words = [];
+
+        $alias_words = explode('_', $table_name);
+
+        $alias = '';
+        foreach ($alias_words as $word) {
+            $alias .= strtoupper($word[0]);
+        }
+
+        $select_values = [];
+        $select_joins = [];
+        $select_groups = [];
+
+        array_push($select_values, $alias . ".id");
+        array_push($select_groups, $alias . ".id");
+
+        foreach ($columns_entries as $j => $column_entry) {
+
+            if ($column_entry['foreign_key'] != null) {
+                $sub_alias = '';
+                $sub_alias_words = [];
+                $sub_alias_words = explode('_', $column_entry["foreign_table"]);
+
+                foreach ($sub_alias_words as $word) {
+                    $sub_alias .= strtoupper($word[0]);
+                }
+
+                $v = "JSON_AGG(" . $sub_alias . "." . $column_entry['foreign_column'] . ") AS " . $column_entry['column_name'];
+                array_push($select_values, $v);
+
+                $join = 'LEFT JOIN ' . $column_entry['foreign_table'] . ' ' . $sub_alias . ' ON ' . $alias . '.id = ' . $sub_alias . '.' . $column_entry['foreign_key'];
+
+                if (in_array($join, $select_joins) == false) {
+                    array_push($select_joins, $join);
+                }
+
+            } else if ($column_entry['foreign_table']) {
+
+                $sub_alias = '';
+                $sub_alias_words = [];
+                $sub_alias_words = explode('_', $column_entry["foreign_table"]);
+
+                foreach ($sub_alias_words as $word) {
+                    $sub_alias .= strtoupper($word[0]);
+                }
+
+                $v = "JSON_AGG(" . $sub_alias . "." . $column_entry['foreign_column'] . ") AS " . $column_entry['column_name'];
+                array_push($select_values, $v);
+
+                $join1 = "LEFT JOIN LATERAL jsonb_array_elements_text(" . $alias . "." . $column_entry["column_name"] . ") AS " . $column_entry["column_name"] . "_id ON TRUE";
+
+                $join2 = 'LEFT JOIN ' . $column_entry['foreign_table'] . ' ' . $sub_alias . ' ON ' . $sub_alias . '.id = ' . $column_entry["column_name"] . "_id::INTEGER";
+
+                if (in_array($join1, $select_joins) == false) {
+                    array_push($select_joins, $join1);
+                }
+
+                if (in_array($join2, $select_joins) == false) {
+                    array_push($select_joins, $join2);
+                }
+
+            } else {
+
+                array_push($select_values, $alias . "." . $column_entry['column_name']);
+                array_push($select_groups, $alias . "." . $column_entry['column_name']);
+            }
+        }
+
+        $asc = ($asc === 'asc') ? 'ASC' : 'DESC';
+        ;
+
+        $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' ' . $asc . ' LIMIT ' . $limit . ' OFFSET ' . $offset . ';';
+        $values = $db->query($sql)->getResultArray();
+
+
+
+        foreach ($values as &$array) {
+            foreach ($array as $key => &$value) {
+                $decoded = json_decode($value, true);
+                if ($decoded != null) {
+                    $value = json_decode($value, true);
+                }
+            }
+        }
+
+
+
+        // $data['tables'][$table_name]['table'] = $table_name;
+        $data["data"] = $values;
+
+        $count = $db->query("SELECT count(*) as count FROM public." . $table_name)->getResultArray();
+
+        $data["count"] = $count[0]["count"];
 
         // $data['tables'] = json_encode($data['tables']);
 

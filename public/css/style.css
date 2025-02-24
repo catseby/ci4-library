@@ -101,3 +101,28 @@ background-color: #dddddd;
     width: 480px;
 }
 
+.pagination {
+    display: flex;
+    gap: 0px;
+    justify-content: center;
+    margin-top: 0px;
+    margin: 0px;
+    padding: 0px;
+}
+.page-button {
+    background: none;
+    border: none;
+    color: #007bff;
+    cursor: pointer;
+    font-size: 16px;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+.page-button:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+.page-button:active {
+    color: #003f7f;
+}
+}

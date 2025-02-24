@@ -56,16 +56,48 @@
         }
 
 
-        function createPagination(totalItems, itemsPerPage) {
-            const totalPages = Math.ceil(totalItems / itemsPerPage);
-            const paginationContainer = document.createElement("div");
+        function createPagination(totalItems, itemsPerPage, tableName) {
+            // document.getElementById(tableName + "_pagination").remove();
+            let totalPages = Math.ceil(totalItems / itemsPerPage);
+            let paginationContainer = document.createElement("div");
+            paginationContainer.id = tableName + "_pagination";
             paginationContainer.className = "pagination";
 
             for (let i = 1; i <= totalPages; i++) {
-                const pageButton = document.createElement("button");
+                console.log(i);
+                let pageButton = document.createElement("button");
                 pageButton.innerText = i;
-                pageButton.onclick = function () {
-                    console.log("clicked " + i);
+                pageButton.className = "page-button";
+                pageButton.onclick = function (e) {
+                    e.preventDefault();
+
+                    let t = document.getElementById(tableName + "_table");
+                    let column = t.getAttribute("column");
+                    let sort = t.getAttribute("sort");
+                    let limit = t.getAttribute("limit");
+                    let page = i;
+
+                    $.ajax({
+                        url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/fetch/" + column + "/" + limit + "/" + sort + "/" + page,
+                        type: "get",
+                        processData: false,
+                        contentType: false,
+                        success: function (response) {
+                            let result = JSON.parse(response);
+                            let container = document.getElementById(tableName);
+                            let table = createTable(tableName, result.data, column, sort);
+
+                            document.getElementById(tableName + "_table").remove();
+
+                            table.setAttribute("limit", limit);
+                            table.setAttribute("column", column);
+                            table.setAttribute("sort", sort);
+                            table.setAttribute("page", page);
+
+
+                            container.appendChild(table);
+                        }
+                    });
                 };
                 paginationContainer.appendChild(pageButton);
             }
@@ -82,7 +114,8 @@
 
             let limit = t.getAttribute("limit");
             let sort_asc = t.getAttribute("sort");
-            let previous_key = t.getAttribute("column");;
+            let previous_key = t.getAttribute("column");
+            let page = t.getAttribute("page");
 
             const tbody = t.querySelector('tbody');
             const rows = Array.from(tbody.rows);
@@ -108,18 +141,23 @@
             }
 
             $.ajax({
-                url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/fetch/" + key + "/" + limit + "/" + sort_asc,
+                url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/fetch/" + key + "/" + limit + "/" + sort_asc + "/" + page,
                 type: "get",
                 processData: false,
                 contentType: false,
                 success: function (response) {
                     let result = JSON.parse(response);
                     let container = document.getElementById(tableName);
-                    let table = createTable(tableName, result, key, sort_asc);
+                    let table = createTable(tableName, result.data, key, sort_asc);
+
                     document.getElementById(tableName + "_table").remove();
+
                     table.setAttribute("limit", limit);
                     table.setAttribute("column", key);
                     table.setAttribute("sort", sort_asc);
+                    table.setAttribute("page", page);
+
+
                     container.appendChild(table);
                 }
             });
@@ -274,26 +312,32 @@
                             t.setAttribute("limit", limit);
                             let sort_column = t.getAttribute("column");
                             let sort_type = t.getAttribute("sort");
+                            let page = t.getAttribute("page");
 
                             if (limit == 'All') {
                                 limit = "NULL";
                             }
 
-                            console.log("http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/fetch/" + sort_column + "/" + limit + "/" + sort_type);
-
                             $.ajax({
-                                url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/fetch/" + sort_column + "/" + limit + "/" + sort_type,
+                                url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/fetch/" + sort_column + "/" + limit + "/" + sort_type + "/" + 1,
                                 type: "get",
                                 processData: false,
                                 contentType: false,
                                 success: function (response) {
                                     let result = JSON.parse(response);
                                     let container = document.getElementById(tableName);
-                                    let table = createTable(tableName, result, sort_column, sort_type);
+                                    let table = createTable(tableName, result.data, sort_column, sort_type);
+
                                     document.getElementById(tableName + "_table").remove();
+                                    document.getElementById(tableName + "_pagination").remove();
+
                                     table.setAttribute("limit", limit);
                                     table.setAttribute("column", sort_column);
                                     table.setAttribute("sort", sort_type);
+                                    table.setAttribute("page", 1);
+
+                                    let pagination = createPagination(result.count, Number(limit), tableName);
+                                    container.appendChild(pagination);
                                     container.appendChild(table);
                                 }
                             });
@@ -301,7 +345,9 @@
                         }
                     },
                     {
-                        key: tableName + "_page"
+                        type: "section",
+                        title: "Page",
+                        id: tableName + "_page"
                     },
                     {
                         id: tableName,
@@ -316,13 +362,6 @@
                 title: "Show",
                 enum: ["All", 5, 10, 20]
             };
-
-            schema_template[tableName + "_page"] = {
-                type: "integer",
-                title: "Page",
-                default: 1
-            };
-
         }
 
         $("#form-tables").jsonForm({
@@ -337,6 +376,10 @@
             table.setAttribute("limit", 5);
             table.setAttribute("column", "id");
             table.setAttribute("sort", "asc");
+            table.setAttribute("page", 1);
+
+            let pagination = createPagination(tableData.data.length, 5, tableName);
+            container.appendChild(pagination);
             container.appendChild(table);
         }
 
