@@ -29,7 +29,8 @@
     <script>
         let tables = <?php echo $tables; ?>;
 
-        function createDynamicTable(tableId, jsonData) {
+        function createDynamicTable(tableName, jsonData) {
+            let tableId = tableName + "_table";
             // Ensure the table exists in the DOM
             if (!$(`#${tableId}`).length) {
                 console.error(`Table with ID '${tableId}' not found in DOM.`);
@@ -50,20 +51,19 @@
 
             // Initialize DataTable
             $(`#${tableId}`).DataTable({
-                data: jsonData,
                 columns: columns,
                 processing: true,
                 serverSide: true,
                 ajax: {
-                    url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableId + "/fetch/datatables",
-                    type: "GET"
+                    url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/fetch/datatables",
+                    type: "POST"
                 },
-                responsive: true,
+                // responsive: true,
                 autoWidth: false,
-                searching: true,
+                searching: false,
                 paging: true,
-                ordering: true,
-                info: true,
+                ordering: false,
+                // info: true,
             });
         }
 
@@ -109,7 +109,7 @@
             container.appendChild(table);
 
 
-            createDynamicTable(tableName + "_table", tableData.data);
+            createDynamicTable(tableName, tableData.data);
         }
 
     </script>

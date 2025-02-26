@@ -20,7 +20,7 @@ $routes->get('/forms', 'FormController::index');
 $routes->get('/forms/(:segment)/fetch/all', 'FormController::fetchAll/$1/id/NULL/asc/1');
 $routes->get('/forms/(:segment)/fetch/(:segment)/(:segment)/(:alpha)/(:num)', 'FormController::fetchAll/$1/$2/$3/$4/$5');
 
-$routes->get('/forms/(:segment)/fetch/datatables', 'FormController::fetchDatatables/$1');
+$routes->post('/forms/(:segment)/fetch/datatables', 'FormController::fetchDatatables/$1');
 
 $routes->get('/forms/(:segment)/fetch/(:segment)', 'FormController::fetch/$1/$2');
 $routes->get('/forms/(:segment)/fetch/(:segment)/(:segment)/(:segment)', 'FormController::fetchWhere/$1/$2/$3/$4');

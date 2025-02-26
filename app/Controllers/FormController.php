@@ -239,21 +239,38 @@ class FormController extends BaseController
 
     public function fetchDatatables($table)
     {
-        $request = service('request');
-
         $db = db_connect();
 
-        $asc = $request->getPost('draw');
-        $offset = $request->getPost('start');
-        $limit = $request->getPost('length');
 
-        log_message("debug", json_encode([$asc,$offset,$limit]));
-        return;
+        $asc = $this->request->getPost('order')[0]['dir'] ?? 'asc';
 
-        $offset = 0;
-        if ($limit != "NULL") {
-            $offset = ((int) $pagination - 1) * (int) $limit;
-        }
+        $columnIndex = $this->request->getPost('order')[0]['column'] ?? 0;
+        $columnsArray = $this->request->getPost('columns');
+
+        $columns = array_column($columnsArray, 'data');
+        $column = $columns[intval($columnIndex)];
+
+        $offset = $this->request->getPost('start') ?? 0;
+        $limit = $this->request->getPost('length') ?? 'NULL';
+
+        $searchValue = $this->request->getPost('search')['value'] ?? "";
+
+        $table_name = $table;
+
+        $draw = $this->request->getPost('draw');
+
+        // $asc = ($asc == null || $asc['dir'] == 'asc') ? "ASC" : "DESC";
+        // $offset = ($offset == null) ? 0 : $offset;
+        // $limit = ($limit == null) ? 'NULL' : $limit;
+
+        log_message("debug", json_encode($this->request->getPost()));
+        // log_message("info", json_encode($this->request->getPost()));
+
+
+        // $offset = 0;
+        // if ($limit != "NULL") {
+        //     $offset = ((int) $pagination - 1) * (int) $limit;
+        // }
 
         $data = [];
 
@@ -333,7 +350,9 @@ class FormController extends BaseController
         $asc = ($asc === 'asc') ? 'ASC' : 'DESC';
         ;
 
-        $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' ' . $asc . ' LIMIT ' . $limit . ' OFFSET ' . $offset . ';';
+        $searchSql = " WHERE to_jsonb(". $alias . ")::text ILIKE '%" . $searchValue . "%'";
+
+        $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . $searchSql . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' ' . $asc . ' LIMIT ' . $limit . ' OFFSET ' . $offset . ';';
         $values = $db->query($sql)->getResultArray();
 
 
@@ -351,16 +370,18 @@ class FormController extends BaseController
 
         // $data['tables'][$table_name]['table'] = $table_name;
         $data["data"] = $values;
+        $data["recordsTotal"] = count($values);
+        $data['draw'] = intval($draw);
 
         $count = $db->query("SELECT count(*) as count FROM public." . $table_name)->getResultArray();
 
-        $data["count"] = $count[0]["count"];
+        $data["recordsFiltered"] = $count[0]["count"];
 
         // $data['tables'] = json_encode($data['tables']);
 
         log_message('debug', json_encode($data));
 
-        return json_encode($data);
+        return $this->response->setJSON($data);
     }
 
     public function fetch($table, $column)
