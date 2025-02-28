@@ -29,44 +29,94 @@
     <script>
         let tables = <?php echo $tables; ?>;
 
-        function createDynamicTable(tableName, jsonData) {
+
+        function createDynamicTable(tableName, columns, server_side) {
             let tableId = tableName + "_table";
             // Ensure the table exists in the DOM
+
+            console.log(1);
             if (!$(`#${tableId}`).length) {
                 console.error(`Table with ID '${tableId}' not found in DOM.`);
                 return;
             }
-
-            if (jsonData.length == 0) {
-                return;
-            }
-
             // Destroy existing DataTable instance if it exists
             if ($.fn.DataTable.isDataTable(`#${tableId}`)) {
                 $(`#${tableId}`).DataTable().destroy();
             }
 
-            // Extract column names from JSON keys
-            const columns = Object.keys(jsonData[0]).map(key => ({ title: key, data: key }));
+            let addLink = "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/add";
 
-            // Initialize DataTable
-            $(`#${tableId}`).DataTable({
-                columns: columns,
-                processing: true,
-                serverSide: true,
-                ajax: {
+            if (server_side) {
+                // Initialize DataTable
+                $(`#${tableId}`).DataTable({
+                    columns: [
+                        ...columns,
+                        {
+                            data: null,
+                            title: '<a href="' + addLink + '" class="add-link">Add</a>',
+                            orderable: false,
+                            searchable: false,
+                            render: function (data, type, row) {
+                                let editLink = "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/edit/" + data.id;
+                                let deleteLink = "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/delete/" + data.id;
+
+                                return `
+                    <a href="${editLink}" class="edit-link">Edit</a> |
+                    <a href="${deleteLink}" class="delete-link">Delete</a>
+                `;
+                            }
+                        }
+                    ],
+                    processing: true,
+                    serverSide: true,
+                    ajax: {
+                        url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/fetch/datatables",
+                        type: "POST"
+                    },
+                    autoWidth: true,
+                });
+            } else {
+
+                $.ajax({
                     url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/fetch/datatables",
-                    type: "POST"
-                },
-                // responsive: true,
-                autoWidth: false,
-                searching: false,
-                paging: true,
-                ordering: false,
-                // info: true,
-            });
-        }
+                    method: "POST", // First change type to method here    
+                    data: {
+                        columns: columns
+                    },
+                    success: function (response) {
+                        console.log(response);
 
+                        $(`#${tableId}`).DataTable({
+                            columns: [
+                                ...columns,
+                                {
+                                    data: null,
+                                    title: '<a href="' + addLink + '" class="add-link">Add</a>',
+                                    orderable: false,
+                                    searchable: false,
+                                    render: function (data, type, row) {
+                                        let editLink = "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/edit/" + data.id;
+                                        let deleteLink = "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/delete/" + data.id;
+
+                                        return `
+                    <a href="${editLink}" class="edit-link">Edit</a> |
+                    <a href="${deleteLink}" class="delete-link">Delete</a>
+                `;
+                                    }
+                                }
+                            ],
+                            data: response.data,
+                            processing: true,
+                            serverSide: false,
+                            autoWidth: true,
+                        });
+                    },
+                    error: function (error) {
+                        console.error(error);
+                    }
+                });
+            }
+        }
 
         let schema_template = {};
 
@@ -100,7 +150,7 @@
         });
 
 
-        for (let [tableName, tableData] of Object.entries(tables)) {
+        for (let [tableName, data] of Object.entries(tables)) {
             let container = document.getElementById(tableName);
             let table = document.createElement("table");
             table.id = tableName + "_table";
@@ -108,8 +158,10 @@
 
             container.appendChild(table);
 
+            mappedColumns = data.columns.map(name => ({ data: name, title: name }));
+            console.log(mappedColumns);
 
-            createDynamicTable(tableName, tableData.data);
+            createDynamicTable(tableName, mappedColumns, data.server_side);
         }
 
     </script>
