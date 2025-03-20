@@ -286,8 +286,7 @@ class FormController extends BaseController
         $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . $searchSql . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' ' . $asc . ' LIMIT ' . $limit . ' OFFSET ' . $offset . ';';
         $values = $db->query($sql)->getResultArray();
 
-        $user = auth()->user();
-        $values = $this->rlsFilter($values,$user,$table_entry["rls_level"]);
+        $values = $this->rlsFilter($values,$table_entry["rls_level"]);
 
         foreach ($values as &$array) {
             foreach ($array as $key => &$value) {
@@ -1107,8 +1106,11 @@ WHERE t.table_name = '" . $table . "';";
         return $premissions;
     }
 
-    private function rlsFilter($rows, $user, $rls_level)
+    private function rlsFilter($rows,$rls_level)
     {
+        $auth = service('auth');
+        $user = $auth->user();
+
         switch ($rls_level) {
 
             case 1:
@@ -1121,8 +1123,22 @@ WHERE t.table_name = '" . $table . "';";
                 return $filtered;
             
             case 2:
-                $group = auth()->getProvider()->getGroupsForUser($user->id)[0];
-                $sql = 'SELECT * FROM '
+                $db = db_connect();
+                
+                $uSql = "SELECT * FROM public.auth_groups_users WHERE user_id = " . $user->id . ";";
+                $group = $db->query($uSql)->getResultArray()[0]['group'];
+
+                $sql = "SELECT * FROM public.auth_groups_metadata WHERE group_name = '" . $group . "';";
+                $result = $db->query($sql)->getResultArray()[0];
+
+                switch ($result['access_level']) {
+                    case 1:
+                        return $rows;
+                    case 2:
+                        return $rows;
+                    default:
+                        return [];
+                }
             default:
                 return $rows;
         }
