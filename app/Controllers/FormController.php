@@ -6,6 +6,8 @@ use App\Controllers\BaseController;
 use App\Models\FormTemplateModel;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Models\FormModel;
+use CodeIgniter\Shield\Authentication\Auth;
+use CodeIgniter\Shield\Exceptions\AccessDeniedException;
 
 class FormController extends BaseController
 {
@@ -19,7 +21,15 @@ class FormController extends BaseController
         $data = [];
 
         foreach ($table_names as $i => $table_name_row) {
+
             $table_name = $table_name_row['table_name'];
+
+            if ($this->premissionDenied($table_name, 'show_roles')) {
+                continue;
+            }
+
+            $premissions = $this->getPremissions($table_name);
+
             $table_limit = intval($table_name_row['maximum_data']);
 
             $column_sql = "SELECT column_name FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY id ASC;";
@@ -29,12 +39,17 @@ class FormController extends BaseController
             $count = intval($countArray[0]["count"]);
 
             $column_names = ['id'];
-            foreach($columns_entries as $j => $column_entry) {
+            foreach ($columns_entries as $j => $column_entry) {
+                if ($this->columnPremissionDenied($table_name, $column_entry['column_name'])) {
+                    continue;
+                }
                 array_push($column_names, $column_entry['column_name']);
             }
 
             $data['tables'][$table_name]["columns"] = $column_names;
             $data['tables'][$table_name]["server_side"] = ($count > $table_limit) ? true : false;
+            $data['tables'][$table_name]['add'] = $premissions["add_roles"];
+            $data['tables'][$table_name]['edit'] = $premissions["edit_roles"];
         }
 
         $data['tables'] = json_encode($data['tables']);
@@ -54,6 +69,7 @@ class FormController extends BaseController
         $data = [];
 
         $table_name = $table;
+
 
         $column_sql = "SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY id ASC;";
         $columns_entries = $db->query($column_sql)->getResultArray();
@@ -127,11 +143,9 @@ class FormController extends BaseController
         }
 
         $asc = ($asc === 'asc') ? 'ASC' : 'DESC';
-        ;
 
         $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' ' . $asc . ' LIMIT ' . $limit . ' OFFSET ' . $offset . ';';
         $values = $db->query($sql)->getResultArray();
-
 
 
         foreach ($values as &$array) {
@@ -159,11 +173,9 @@ class FormController extends BaseController
         return json_encode($data);
     }
 
-
     public function fetchDatatables($table)
     {
         $db = db_connect();
-
 
         $asc = $this->request->getPost('order')[0]['dir'] ?? 'asc';
 
@@ -182,22 +194,14 @@ class FormController extends BaseController
 
         $draw = $this->request->getPost('draw');
 
-        // $asc = ($asc == null || $asc['dir'] == 'asc') ? "ASC" : "DESC";
-        // $offset = ($offset == null) ? 0 : $offset;
-        // $limit = ($limit == null) ? 'NULL' : $limit;
-
-        log_message("debug", json_encode($this->request->getPost()));
-        // log_message("info", json_encode($this->request->getPost()));
-
-
-        // $offset = 0;
-        // if ($limit != "NULL") {
-        //     $offset = ((int) $pagination - 1) * (int) $limit;
-        // }
 
         $data = [];
 
         $table_name = $table;
+
+
+        $table_sql = "SELECT * FROM public.table_metadata WHERE table_name = '" . $table_name . "';";
+        $table_entry = $db->query($table_sql)->getResultArray()[0];
 
         $column_sql = "SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY id ASC;";
         $columns_entries = $db->query($column_sql)->getResultArray();
@@ -219,6 +223,10 @@ class FormController extends BaseController
         array_push($select_groups, $alias . ".id");
 
         foreach ($columns_entries as $j => $column_entry) {
+
+            if ($this->columnPremissionDenied($table_name, $column_entry["column_name"])) {
+                continue;
+            }
 
             if ($column_entry['foreign_key'] != null) {
                 $sub_alias = '';
@@ -273,12 +281,13 @@ class FormController extends BaseController
         $asc = ($asc === 'asc') ? 'ASC' : 'DESC';
         ;
 
-        $searchSql = " WHERE to_jsonb(". $alias . ")::text ILIKE '%" . $searchValue . "%'";
+        $searchSql = " WHERE to_jsonb(" . $alias . ")::text ILIKE '%" . $searchValue . "%'";
 
         $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . $searchSql . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' ' . $asc . ' LIMIT ' . $limit . ' OFFSET ' . $offset . ';';
         $values = $db->query($sql)->getResultArray();
 
-
+        $user = auth()->user();
+        $values = $this->rlsFilter($values,$user,$table_entry["rls_level"]);
 
         foreach ($values as &$array) {
             foreach ($array as $key => &$value) {
@@ -302,7 +311,6 @@ class FormController extends BaseController
 
         // $data['tables'] = json_encode($data['tables']);
 
-        log_message('debug', json_encode($data));
 
         return $this->response->setJSON($data);
     }
@@ -331,12 +339,18 @@ class FormController extends BaseController
 
     public function add($table)
     {
+
+        if ($this->premissionDenied($table, 'add_roles')) {
+            return $this->response->setStatusCode(403)->setBody('Access Denied');
+        }
+
         $formModel = new FormModel();
         $results = $formModel->getForm($table);
 
-        $schema = $this->getSchema($table, $results);
-        $form = $this->getForm($results, "Create");
-        $links = $this->getLinks($results, "add");
+        $allowed_columns = $this->getAllowedColumns($table);
+        $schema = $this->getSchema($table, $results, $allowed_columns);
+        $form = $this->getForm($results, "Create", $allowed_columns);
+        $links = $this->getLinks($results, "add", $allowed_columns);
 
         log_message("debug", json_encode($links));
 
@@ -354,6 +368,12 @@ class FormController extends BaseController
 
     public function create($name)
     {
+
+        if ($this->premissionDenied($name, 'add_roles')) {
+            return $this->response->setStatusCode(403)->setBody('Access Denied');
+        }
+
+
         $files = $this->request->getFiles();
         $post = $this->request->getPost();
         $id = null;
@@ -377,6 +397,13 @@ class FormController extends BaseController
                     }
                 }
 
+                $user = auth()->user();
+                $userId = $user->id ?? null;
+                $timestamp = date('Y-m-d H:i:s');
+
+                $data['created_user_id'] = $userId;
+                $data['created_at'] = $timestamp;
+
                 $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
                 $db->query($query, array_values($data));
                 $id = $db->insertID();
@@ -389,6 +416,12 @@ class FormController extends BaseController
                 }
             }
 
+            $user = auth()->user();
+            $userId = $user->id ?? null;
+            $timestamp = date('Y-m-d H:i:s');
+
+            $data['created_user_id'] = $userId;
+            $data['created_at'] = $timestamp;
 
             $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
             $query = $db->query($query, array_values($data));
@@ -401,14 +434,20 @@ class FormController extends BaseController
 
     public function edit($table, $index, $column)
     {
+        if ($this->premissionDenied($table, 'edit_roles')) {
+            return $this->response->setStatusCode(403)->setBody('Access Denied');
+        }
+
+
         $formModel = new FormModel();
         $template = $formModel->getForm($table);
 
-        $schema = $this->getSchema($table, $template);
-        $form = $this->getForm($template, "Save");
-        $links = $this->getLinks($template, "edit", $index);
+        $allowed_columns = $this->getAllowedColumns($table);
+        $schema = $this->getSchema($table, $template, $allowed_columns);
+        $form = $this->getForm($template, "Save", $allowed_columns);
+        $links = $this->getLinks($template, "edit", $allowed_columns, $index);
 
-        $joins = $this->getJoins($template);
+        $joins = $this->getJoins($template, $allowed_columns);
 
 
         $db = db_connect();
@@ -447,6 +486,11 @@ class FormController extends BaseController
 
     public function update($name, $index, $column)
     {
+        if ($this->premissionDenied($name, 'edit_roles')) {
+            return $this->response->setStatusCode(403)->setBody('Access Denied');
+        }
+
+
         $files = $this->request->getFiles();
         $post = $this->request->getPost();
 
@@ -473,6 +517,17 @@ class FormController extends BaseController
                     }
                     $keys[] = $key . " = ?";
                 }
+
+                $user = auth()->user();
+                $userId = $user->id ?? null;
+                $timestamp = date('Y-m-d H:i:s');
+
+                $data['updated_user_id'] = $userId;
+                $data['updated_at'] = $timestamp;
+
+                $keys[] = 'updated_user_id = ?';
+                $keys[] = 'updated_at = ?';
+
                 $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
                 $db->query($query, array_values($data));
 
@@ -492,6 +547,17 @@ class FormController extends BaseController
                 //     $data[$key] = false;
                 // }
                 // $keys[] = $key . " = ?";
+
+                $user = auth()->user();
+                $userId = $user->id ?? null;
+                $timestamp = date('Y-m-d H:i:s');
+
+                $data['updated_user_id'] = $userId;
+                $data['updated_at'] = $timestamp;
+
+                $keys[] = 'updated_user_id = ?';
+                $keys[] = 'updated_at = ?';
+
             }
 
 
@@ -506,6 +572,12 @@ class FormController extends BaseController
 
     public function destroy($name, $index, $column)
     {
+
+        if ($this->premissionDenied($name, 'edit_roles')) {
+            return $this->response->setStatusCode(403)->setBody('Access Denied');
+        }
+
+
         $db = db_connect();
 
         $query = 'DELETE FROM public.' . $name . ' WHERE ' . $column . ' = ' . $index;
@@ -526,6 +598,11 @@ class FormController extends BaseController
 
     public function destroy_with_files($name, $index, $column)
     {
+
+        if ($this->premissionDenied($name, 'edit_roles')) {
+            return $this->response->setStatusCode(403)->setBody('Access Denied');
+        }
+
         $db = db_connect();
 
         $sql1 = "SELECT column_name " .
@@ -554,7 +631,7 @@ class FormController extends BaseController
         $db->query($sql3);
     }
 
-    private function getSchema($table, $results)
+    private function getSchema($table, $results, $allowed_columns)
     {
         $schema = [
             "type" => "object",
@@ -563,6 +640,10 @@ class FormController extends BaseController
         ];
 
         foreach ($results as $index => $result) {
+
+            if (!in_array($result['column_name'], $allowed_columns)) {
+                continue;
+            }
 
             $property;
             $required;
@@ -615,12 +696,16 @@ class FormController extends BaseController
         return $schema;
     }
 
-    private function getForm($results, $button_title)
+    private function getForm($results, $button_title, $allowed_columns)
     {
         $form = [];
         $tabs = [];
 
         foreach ($results as $index => $result) {
+
+            if (!in_array($result['column_name'], $allowed_columns)) {
+                continue;
+            }
 
             $field = [];
             $extraField = [];
@@ -801,10 +886,35 @@ class FormController extends BaseController
         return $form;
     }
 
-    private function getLinks($results, $type, $id = null)
+    private function getAllowedColumns($table_name)
+    {
+        $db = db_connect();
+
+        $column_sql = "SELECT column_name, required FROM public.form_metadata WHERE table_name = '" . $table_name . "' ORDER BY order_position ASC;";
+        $columns_entries = $db->query($column_sql)->getResultArray();
+
+
+        $allowed = [];
+
+        foreach ($columns_entries as $j => $column_entry) {
+            if ($column_entry["required"] == "t" || !$this->columnPremissionDenied($table_name, $column_entry['column_name'])) {
+                array_push($allowed, $column_entry['column_name']);
+            }
+        }
+
+        log_message("debug", json_encode($allowed));
+
+        return $allowed;
+    }
+
+    private function getLinks($results, $type, $allowed_columns, $id = null)
     {
         $t_links = [];
         foreach ($results as $index => $result) {
+
+            if (!in_array($result['column_name'], $allowed_columns)) {
+                continue;
+            }
 
             if ($result["to_foreign"] == 't') {
 
@@ -843,10 +953,15 @@ class FormController extends BaseController
         return $links;
     }
 
-    private function getJoins($results)
+    private function getJoins($results, $allowed_columns)
     {
         $joins = [];
         foreach ($results as $key => $result) {
+
+            if (!in_array($result['column_name'], $allowed_columns)) {
+                continue;
+            }
+
             if ($result["to_foreign"] == "t") {
                 array_push($joins, [
                     "table" => $result["f_table"],
@@ -855,5 +970,161 @@ class FormController extends BaseController
             }
         }
         return $joins;
+    }
+
+
+
+    private function premissionDenied($table, $type)
+    {
+
+        $db = db_connect();
+
+        $sql = "SELECT 
+    jsonb_agg(DISTINCT ag.group_name) AS add_roles,
+    jsonb_agg(DISTINCT eg.group_name) AS edit_roles,
+    jsonb_agg(DISTINCT sg.group_name) AS show_roles
+FROM table_metadata t
+
+JOIN LATERAL jsonb_array_elements(t.add_roles) AS add_role_name ON true
+JOIN auth_groups_metadata ag ON ag.id = (add_role_name::text)::int
+
+JOIN LATERAL jsonb_array_elements(t.edit_roles) AS edit_role_name ON true
+JOIN auth_groups_metadata eg ON eg.id = (edit_role_name::text)::int
+
+JOIN LATERAL jsonb_array_elements(t.show_roles) AS show_role_name ON true
+JOIN auth_groups_metadata sg ON sg.id = (show_role_name::text)::int
+
+WHERE t.table_name = '" . $table . "';";
+
+
+        $result = $db->query($sql)->getResultArray();
+
+        $auth = service('auth');
+        $user = $auth->user();
+
+        if ($result[0][$type] == null) {
+            return false;
+        }
+
+
+        $decodedArray = json_decode($result[0][$type], true); // Decode JSON as an array
+
+        foreach ($decodedArray as $group) {
+            if ($user->inGroup($group)) {
+                return false; // User has permission
+            }
+        }
+
+
+        return true; // User doesn't have permission
+    }
+
+    private function columnPremissionDenied($table, $column)
+    {
+        $db = db_connect();
+
+        $sql = "SELECT 
+    jsonb_agg(DISTINCT ag.group_name) AS roles
+
+FROM column_metadata t
+
+JOIN LATERAL jsonb_array_elements(t.allowed_roles) AS add_role_name ON true
+JOIN auth_groups_metadata ag ON ag.id = (add_role_name::text)::int
+
+
+WHERE t.table_name = '" . $table . "' AND t.column_name = '" . $column . "';";
+
+
+        $result = $db->query($sql)->getResultArray();
+
+        $auth = service('auth');
+        $user = $auth->user();
+
+        if ($result[0]['roles'] == null) {
+            return false;
+        }
+
+        $decodedArray = json_decode($result[0]['roles'], true); // Decode JSON as an array
+
+        // log_message("debug", json_encode($result));
+
+
+        foreach ($decodedArray as $group) {
+            if ($user->inGroup($group)) {
+                return false; // User has permission
+            }
+        }
+
+        return true; // User doesn't have permission
+    }
+
+    private function getPremissions($table)
+    {
+        $db = db_connect();
+
+        $sql = "SELECT 
+    jsonb_agg(DISTINCT ag.group_name) AS add_roles,
+    jsonb_agg(DISTINCT eg.group_name) AS edit_roles,
+    jsonb_agg(DISTINCT sg.group_name) AS show_roles
+FROM table_metadata t
+
+JOIN LATERAL jsonb_array_elements(t.add_roles) AS add_role_name ON true
+JOIN auth_groups_metadata ag ON ag.id = (add_role_name::text)::int
+
+JOIN LATERAL jsonb_array_elements(t.edit_roles) AS edit_role_name ON true
+JOIN auth_groups_metadata eg ON eg.id = (edit_role_name::text)::int
+
+JOIN LATERAL jsonb_array_elements(t.show_roles) AS show_role_name ON true
+JOIN auth_groups_metadata sg ON sg.id = (show_role_name::text)::int
+
+WHERE t.table_name = '" . $table . "';";
+
+
+        $result = $db->query($sql)->getResultArray();
+
+        $auth = service('auth');
+        $user = $auth->user();
+
+        $premissions = [];
+
+        foreach ($result[0] as $key => $roles) {
+
+            if ($roles == null) {
+                $premissions[$key] = true;
+                continue;
+            }
+
+            $decodedArray = json_decode($roles, true); // Decode JSON as an array
+            $premissions[$key] = false;
+
+            foreach ($decodedArray as $group) {
+                if ($user->inGroup($group)) {
+                    $premissions[$key] = true;
+                }
+            }
+        }
+
+        return $premissions;
+    }
+
+    private function rlsFilter($rows, $user, $rls_level)
+    {
+        switch ($rls_level) {
+
+            case 1:
+                $filtered = [];
+                foreach ($rows as $index => $row) {
+                    if ($row['created_user_id'] == $user->id) {
+                       array_push($filtered, $row);
+                    }
+                }
+                return $filtered;
+            
+            case 2:
+                $group = auth()->getProvider()->getGroupsForUser($user->id)[0];
+                $sql = 'SELECT * FROM '
+            default:
+                return $rows;
+        }
     }
 }

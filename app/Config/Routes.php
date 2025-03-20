@@ -5,6 +5,7 @@ use CodeIgniter\Router\RouteCollection;
 /**
  * @var RouteCollection $routes
  */
+
 $routes->get('/', 'BookController::index');
 $routes->get('/categories', 'BookController::categories');
 $routes->get('/categories/form', 'BookController::categoryForm');
@@ -37,6 +38,7 @@ $routes->post('/forms/(:segment)/edit/(:num)/(:segment)', 'FormController::updat
 $routes->get('/forms/(:segment)/delete/(:num)', 'FormController::destroy/$1/$2/id');
 $routes->get('/forms/(:segment)/delete/(:num)/(:segment)', 'FormController::destroy/$1/$2/$3');
 
+service('auth')->routes($routes);
 
 
 
