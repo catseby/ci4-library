@@ -38,13 +38,15 @@ class FormController extends BaseController
             $countArray = $db->query("SELECT count(*) as count FROM public." . $table_name)->getResultArray();
             $count = intval($countArray[0]["count"]);
 
-            $column_names = ['id'];
+            $column_names = [["data" => "id", "title" => "id"]];
             foreach ($columns_entries as $j => $column_entry) {
                 if ($this->columnPremissionDenied($table_name, $column_entry['column_name'])) {
                     continue;
                 }
-                array_push($column_names, $column_entry['column_name']);
+                array_push($column_names, ["data" => $column_entry['column_name'], "title" => $column_entry['column_name']]);
             }
+
+            array_push($column_names, ["data" => "data_table_tools", "title" => "Add"]);
 
             $data['tables'][$table_name]["columns"] = $column_names;
             $data['tables'][$table_name]["server_side"] = ($count > $table_limit) ? true : false;
@@ -286,7 +288,7 @@ class FormController extends BaseController
         $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . $searchSql . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' ' . $asc . ' LIMIT ' . $limit . ' OFFSET ' . $offset . ';';
         $values = $db->query($sql)->getResultArray();
 
-        $values = $this->rlsFilter($values,$table_entry["rls_level"]);
+        $values = $this->rlsFilter($values, $table_entry["rls_level"], $table_name);
 
         foreach ($values as &$array) {
             foreach ($array as $key => &$value) {
@@ -296,6 +298,7 @@ class FormController extends BaseController
                 }
             }
         }
+
 
 
 
@@ -1106,10 +1109,11 @@ WHERE t.table_name = '" . $table . "';";
         return $premissions;
     }
 
-    private function rlsFilter($rows,$rls_level)
+    private function rlsFilter($rows, $rls_level, $table)
     {
         $auth = service('auth');
         $user = $auth->user();
+        $canEdit = true;
 
         switch ($rls_level) {
 
@@ -1117,14 +1121,15 @@ WHERE t.table_name = '" . $table . "';";
                 $filtered = [];
                 foreach ($rows as $index => $row) {
                     if ($row['created_user_id'] == $user->id) {
-                       array_push($filtered, $row);
+                        array_push($filtered, $row);
                     }
                 }
-                return $filtered;
-            
+                $rows = $filtered;
+                break;
+
             case 2:
                 $db = db_connect();
-                
+
                 $uSql = "SELECT * FROM public.auth_groups_users WHERE user_id = " . $user->id . ";";
                 $group = $db->query($uSql)->getResultArray()[0]['group'];
 
@@ -1133,14 +1138,28 @@ WHERE t.table_name = '" . $table . "';";
 
                 switch ($result['access_level']) {
                     case 1:
-                        return $rows;
+                        break;
                     case 2:
-                        return $rows;
+                        $canEdit = false;
+                        break;
                     default:
                         return [];
                 }
+                break;
             default:
-                return $rows;
+                break;
         }
+
+        foreach ($rows as $index => &$row) {
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
+            $prefix =  $protocol . "://" . $_SERVER['HTTP_HOST'] . "/forms/" . $table;
+            $edit_url = $prefix . "/edit/" . $rows[$index]["id"];
+            $delete_url = $prefix . "/delete/" . $rows[$index]["id"];
+            $row["data_table_tools"] = $canEdit ? '<a href="' . $edit_url . '">Edit</a><br><a href="' . $delete_url . '">Delete</a>' : "";
+        }
+
+        return $rows;
     }
+
+
 }

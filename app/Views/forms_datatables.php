@@ -34,7 +34,6 @@
             let tableId = tableName + "_table";
             // Ensure the table exists in the DOM
 
-            console.log(1);
             if (!$(`#${tableId}`).length) {
                 console.error(`Table with ID '${tableId}' not found in DOM.`);
                 return;
@@ -44,41 +43,20 @@
                 $(`#${tableId}`).DataTable().destroy();
             }
 
-
-            let edit_title = '';
-            if (add) {
-                let addLink = "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/add";
-                edit_title = '<a href="' + addLink + '" class="add-link">Add</a>';
+            let raw_columns = [];
+            for (let i = 0; i < columns.length; i++) {
+                let c = columns[i];
+                if (c.data != 'data_table_tools') {
+                    raw_columns.push(c);
+                }
             }
 
-            let edit_column = {
-                data: null,
-                title: edit_title,
-                orderable: false,
-                searchable: false
-            }
-
-
+            console.log(raw_columns);
 
             if (server_side) {
                 // Initialize DataTable
                 $(`#${tableId}`).DataTable({
-                    columns: (add == false && edit == false) ? columns : [...columns, {
-                        ...edit_column,
-                        render: function (data, type, row) {
-                            if (edit == true) {
-                                let editLink = "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/edit/" + data.id;
-                                let deleteLink = "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/delete/" + data.id;
-
-                                return `
-                    <a href="${editLink}" class="edit-link">Edit</a> |
-                    <a href="${deleteLink}" class="delete-link">Delete</a>
-                `;
-                            } else {
-                                return '';
-                            }
-                        }
-                    }],
+                    columns: columns,
                     processing: true,
                     serverSide: true,
                     ajax: {
@@ -93,28 +71,13 @@
                     url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/fetch/datatables",
                     method: "POST", // First change type to method here    
                     data: {
-                        columns: [...columns, edit_column],
+                        columns: raw_columns
                     },
                     success: function (response) {
                         console.log(response);
 
                         $(`#${tableId}`).DataTable({
-                            columns: (add == false && edit == false) ? columns : [...columns, {
-                                ...edit_column,
-                                render: function (data, type, row) {
-                                    if (edit == true) {
-                                        let editLink = "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/edit/" + data.id;
-                                        let deleteLink = "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/delete/" + data.id;
-
-                                        return `
-                    <a href="${editLink}" class="edit-link">Edit</a> |
-                    <a href="${deleteLink}" class="delete-link">Delete</a>
-                `;
-                                    } else {
-                                        return '';
-                                    }
-                                }
-                            }],
+                            columns: columns,
                             data: response.data,
                             processing: true,
                             serverSide: false,
@@ -168,10 +131,7 @@
 
             container.appendChild(table);
 
-            mappedColumns = data.columns.map(name => ({ data: name, title: name }));
-            console.log(mappedColumns);
-
-            createDynamicTable(tableName, mappedColumns, data.server_side, data.add, data.edit);
+            createDynamicTable(tableName, data.columns, data.server_side, data.add, data.edit);
         }
 
     </script>
