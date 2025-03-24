@@ -46,7 +46,12 @@ class FormController extends BaseController
                 array_push($column_names, ["data" => $column_entry['column_name'], "title" => $column_entry['column_name']]);
             }
 
-            array_push($column_names, ["data" => "data_table_tools", "title" => "Add"]);
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
+            $add_url = $protocol . "://" . $_SERVER['HTTP_HOST'] . "/forms/" . $table_name . "/add";
+
+            $add_link = $premissions["add_roles"] ? '<a href="' . $add_url . '">Add</a>' : "";
+
+            array_push($column_names, ["data" => "data_table_tools", "title" => $add_link]);
 
             $data['tables'][$table_name]["columns"] = $column_names;
             $data['tables'][$table_name]["server_side"] = ($count > $table_limit) ? true : false;
@@ -436,7 +441,7 @@ class FormController extends BaseController
 
     public function edit($table, $index, $column)
     {
-        if ($this->premissionDenied($table, 'edit_roles')) {
+        if ($this->premissionDenied($table, 'edit_roles', $index)) {
             return $this->response->setStatusCode(403)->setBody('Access Denied');
         }
 
@@ -575,7 +580,7 @@ class FormController extends BaseController
     public function destroy($name, $index, $column)
     {
 
-        if ($this->premissionDenied($name, 'edit_roles')) {
+        if ($this->premissionDenied($name, 'edit_roles', $index)) {
             return $this->response->setStatusCode(403)->setBody('Access Denied');
         }
 
@@ -976,12 +981,12 @@ class FormController extends BaseController
 
 
 
-    private function premissionDenied($table, $type)
+    private function premissionDenied($table, $type, $index = -1)
     {
 
         $db = db_connect();
 
-        $sql = "SELECT 
+        $sql = "SELECT
     jsonb_agg(DISTINCT ag.group_name) AS add_roles,
     jsonb_agg(DISTINCT eg.group_name) AS edit_roles,
     jsonb_agg(DISTINCT sg.group_name) AS show_roles
@@ -1003,6 +1008,18 @@ WHERE t.table_name = '" . $table . "';";
 
         $auth = service('auth');
         $user = $auth->user();
+
+        if ($index != -1) {
+            $sql1 = "SELECT rls_level FROM public.table_metadata WHERE table_name = '" . $table . "';";
+            $sql2 = "SELECT created_user_id FROM " . $table . " WHERE id = " . $index . ";";
+            $row = $db->query($sql2)->getResultArray()[0];
+            $table = $db->query($sql1)->getResultArray()[0];
+
+            if (!$this->rlsAllowed($table['rls_level'], $user, $row)) {
+                return true;
+            }
+        }
+
 
         if ($result[0][$type] == null) {
             return false;
@@ -1081,7 +1098,6 @@ JOIN auth_groups_metadata sg ON sg.id = (show_role_name::text)::int
 
 WHERE t.table_name = '" . $table . "';";
 
-
         $result = $db->query($sql)->getResultArray();
 
         $auth = service('auth');
@@ -1114,6 +1130,7 @@ WHERE t.table_name = '" . $table . "';";
         $auth = service('auth');
         $user = $auth->user();
         $canEdit = true;
+        $editBlacklist = [];
 
         switch ($rls_level) {
 
@@ -1146,20 +1163,63 @@ WHERE t.table_name = '" . $table . "';";
                         return [];
                 }
                 break;
+            case 3:
+                $db = db_connect();
+
+                $uSql = "SELECT * FROM public.auth_groups_users WHERE user_id = " . $user->id . ";";
+                $group = $db->query($uSql)->getResultArray()[0]['group'];
+
+                $sql = "SELECT * FROM public.auth_groups_metadata WHERE group_name = '" . $group . "';";
+                $result = $db->query($sql)->getResultArray()[0];
+
+                switch ($result['access_level']) {
+                    case 1:
+                        break;
+                    default:
+                        foreach ($rows as $index => $row) {
+                            if ($row['created_user_id'] != $user->id) {
+                                array_push($editBlacklist, $row["id"]);
+                            }
+                        }
+                }
+                break;
             default:
                 break;
         }
 
         foreach ($rows as $index => &$row) {
             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-            $prefix =  $protocol . "://" . $_SERVER['HTTP_HOST'] . "/forms/" . $table;
+            $prefix = $protocol . "://" . $_SERVER['HTTP_HOST'] . "/forms/" . $table;
             $edit_url = $prefix . "/edit/" . $rows[$index]["id"];
             $delete_url = $prefix . "/delete/" . $rows[$index]["id"];
-            $row["data_table_tools"] = $canEdit ? '<a href="' . $edit_url . '">Edit</a><br><a href="' . $delete_url . '">Delete</a>' : "";
+            $row["data_table_tools"] = ($canEdit && !in_array($row['id'], $editBlacklist)) ? '<a href="' . $edit_url . '">Edit</a><br><a href="' . $delete_url . '">Delete</a>' : "";
         }
 
         return $rows;
     }
 
+    private function rlsAllowed($rls_level, $user, $row)
+    {
+
+        $db = db_connect();
+
+        $uSql = "SELECT * FROM public.auth_groups_users WHERE user_id = " . $user->id . ";";
+        $group = $db->query($uSql)->getResultArray()[0]['group'];
+
+        $sql = "SELECT * FROM public.auth_groups_metadata WHERE group_name = '" . $group . "';";
+        $result = $db->query($sql)->getResultArray()[0];
+
+
+        switch ($rls_level) {
+            case 0:
+                return true;
+            case 1:
+                return ($row['created_user_id'] == $user->id);
+            case 2:
+                return ($result["access_level"] == 1);
+            case 3:
+                return ($row['created_user_id'] == $user->id);
+        }
+    }
 
 }
