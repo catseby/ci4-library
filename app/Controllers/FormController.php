@@ -979,8 +979,6 @@ class FormController extends BaseController
         return $joins;
     }
 
-
-
     private function premissionDenied($table, $type, $index = -1)
     {
 

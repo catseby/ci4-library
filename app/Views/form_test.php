@@ -201,7 +201,7 @@
                         let filename = value[j][f.key];
                         createFileFromUrl("http://localhost:8080/uploads/" + filename, filename)
                             .then((new_file) => {
-                                file_arr.push(new_file);    
+                                file_arr.push(new_file);
                                 display_images(new_file, false);
                             })
                             .catch((error) => console.error("Error creating file:", error));
@@ -210,9 +210,7 @@
             }
 
             if (f.hasOwnProperty('select')) {
-                // console.log(f.key);
-                // console.log("AAAAAAAAAAAAA");
-                // console.log("http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column);
+
                 display_selects("http://localhost:8080/forms/" + f.select.table + "/fetch/" + f.select.column, f, false);
 
                 if (f.select.dynamic_fetch == true) {
@@ -260,7 +258,7 @@
 
                 if (link.keys.includes(key)) {
                     if (schema.properties[key].type == "file") {
-                        // let files = document.getElementsByName(key)[0].files;
+
                         for (let j = 0; j < file_arr.length; j++) {
                             formData.append("files[]", file_arr[j]);
 
@@ -269,16 +267,14 @@
                     }
                     else if (schema.properties[key].type == "select") {
                         let mult = $('[name="' + key + '"]').attr('multiple');
-                        // console.log($('[name="' + key + '"]').val());
+
                         if (mult != undefined) {
                             if ($('[name="' + key + '"]').val() != null) {
                                 let select_value = $('[name="' + key + '"]').val().map(Number);
-                                console.log(select_value + "AAAAAAAAAARDG");
                                 formData.append(key, JSON.stringify(select_value));
                             }
                         } else {
                             let select_value = $('[name="' + key + '"] option:selected').text();
-                            console.log(select_value + "BOBOBOBOBO");
                             formData.append(key, select_value);
                         }
                     }
