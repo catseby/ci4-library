@@ -41,73 +41,28 @@ class AuthGroups extends ShieldAuthGroups
      * @see https://codeigniter4.github.io/shield/quick_start_guide/using_authorization/#change-available-groups for more info
      */
     public array $groups;
+    public array $permissions;
+    public array $matrix;
 
     public function __construct()
     {
 
         $db = db_connect();
-        $sql = "SELECT * FROM public.auth_groups_metadata;";
-        $groups = $db->query($sql)->getResultArray();
+        $groups = $db->query("SELECT * FROM public.auth_groups;")->getResultArray();
+        $premissions = $db->query("SELECT * FROM public.auth_premissions")->getResultArray();
 
         foreach ($groups as $i => $group) {
+
             $this->groups[$group['group_name']] = [
                 'title' => $group['group_name'],
-                'description' => $group['group_description'],
-                'permissions' => "",
+                'description' => $group['group_description']
             ];
+
+            $this->matrix[$group["group_name"]] = json_decode($group["premissions"]);
+        }
+
+        foreach($premissions as $i =>$premission) {
+            $this->permissions[$premission["premission_name"]] = $premission["premission_description"];
         }
     }
-
-
-    /**
-     * --------------------------------------------------------------------
-     * Permissions
-     * --------------------------------------------------------------------
-     * The available permissions in the system.
-     *
-     * If a permission is not listed here it cannot be used.
-     */
-    public array $permissions = [
-        'admin.access' => 'Can access the sites admin area',
-        'admin.settings' => 'Can access the main site settings',
-        'users.manage-admins' => 'Can manage other admins',
-        'users.create' => 'Can create new non-admin users',
-        'users.edit' => 'Can edit existing non-admin users',
-        'users.delete' => 'Can delete existing non-admin users',
-        'beta.access' => 'Can access beta-level features',
-    ];
-
-    /**
-     * --------------------------------------------------------------------
-     * Permissions Matrix
-     * --------------------------------------------------------------------
-     * Maps permissions to groups.
-     *
-     * This defines group-level permissions.
-     */
-    public array $matrix = [
-        'superadmin' => [
-            'admin.*',
-            'users.*',
-            'beta.*',
-        ],
-        'admin' => [
-            'admin.access',
-            'users.create',
-            'users.edit',
-            'users.delete',
-            'beta.access',
-        ],
-        'developer' => [
-            'admin.access',
-            'admin.settings',
-            'users.create',
-            'users.edit',
-            'beta.access',
-        ],
-        'user' => [],
-        'beta' => [
-            'beta.access',
-        ],
-    ];
 }

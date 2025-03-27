@@ -61,7 +61,7 @@ class TableController extends BaseController
 
         $data['tables'] = json_encode($data['tables']);
 
-        return view('forms_datatables', $data);
+        return view('datatables', $data);
     }
 
     public function fetchDatatables($table)

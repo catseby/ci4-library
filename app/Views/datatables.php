@@ -51,8 +51,6 @@
                 }
             }
 
-            console.log(raw_columns);
-
             if (server_side) {
                 // Initialize DataTable
                 $(`#${tableId}`).DataTable({
@@ -74,8 +72,6 @@
                         columns: raw_columns
                     },
                     success: function (response) {
-                        console.log(response);
-
                         $(`#${tableId}`).DataTable({
                             columns: columns,
                             data: response.data,
