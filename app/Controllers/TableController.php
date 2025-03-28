@@ -18,21 +18,24 @@ class TableController extends BaseController
         $table_sql = 'SELECT * FROM public.table_metadata;';
         $table_names = $db->query($table_sql)->getResultArray();
 
+        $auth = service('auth');
+        $user = $auth->user();
+
         $data = [];
 
         foreach ($table_names as $i => $table_name_row) {
 
             $table_name = $table_name_row['table_name'];
 
-            if ($this->premissionDenied($table_name, 'show_roles')) {
+            $premissions = $this->getPremissions($table_name_row, $user);
+
+            if ($premissions["show"] != true) {
                 continue;
             }
 
-            $premissions = $this->getPremissions($table_name);
-
             $table_limit = intval($table_name_row['maximum_data']);
 
-            $column_sql = "SELECT column_name FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY id ASC;";
+            $column_sql = "SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY id ASC;";
             $columns_entries = $db->query($column_sql)->getResultArray();
 
             $countArray = $db->query("SELECT count(*) as count FROM public." . $table_name)->getResultArray();
@@ -40,7 +43,7 @@ class TableController extends BaseController
 
             $column_names = [["data" => "id", "title" => "id"]];
             foreach ($columns_entries as $j => $column_entry) {
-                if ($this->columnPremissionDenied($table_name, $column_entry['column_name'])) {
+                if ($this->columnPremissionDenied($column_entry, $user)) {
                     continue;
                 }
                 array_push($column_names, ["data" => $column_entry['column_name'], "title" => $column_entry['column_name']]);
@@ -49,14 +52,14 @@ class TableController extends BaseController
             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
             $add_url = $protocol . "://" . $_SERVER['HTTP_HOST'] . "/forms/" . $table_name . "/add";
 
-            $add_link = $premissions["add_roles"] ? '<a href="' . $add_url . '">Add</a>' : "";
+            $add_link = $premissions["add"] ? '<a href="' . $add_url . '">Add</a>' : "";
 
             array_push($column_names, ["data" => "data_table_tools", "title" => $add_link]);
 
             $data['tables'][$table_name]["columns"] = $column_names;
             $data['tables'][$table_name]["server_side"] = ($count > $table_limit) ? true : false;
-            $data['tables'][$table_name]['add'] = $premissions["add_roles"];
-            $data['tables'][$table_name]['edit'] = $premissions["edit_roles"];
+            $data['tables'][$table_name]['add'] = $premissions["add"];
+            $data['tables'][$table_name]['edit'] = $premissions["edit"];
         }
 
         $data['tables'] = json_encode($data['tables']);
@@ -66,6 +69,9 @@ class TableController extends BaseController
 
     public function fetchDatatables($table)
     {
+        $auth = service('auth');
+        $user = $auth->user();
+
         $db = db_connect();
 
         $asc = $this->request->getPost('order')[0]['dir'] ?? 'asc';
@@ -115,7 +121,7 @@ class TableController extends BaseController
 
         foreach ($columns_entries as $j => $column_entry) {
 
-            if ($this->columnPremissionDenied($table_name, $column_entry["column_name"])) {
+            if ($this->columnPremissionDenied($column_entry, $user)) {
                 continue;
             }
 
@@ -188,9 +194,6 @@ class TableController extends BaseController
             }
         }
 
-
-
-
         // $data['tables'][$table_name]['table'] = $table_name;
         $data["data"] = $values;
         $data["recordsTotal"] = count($values);
@@ -206,229 +209,44 @@ class TableController extends BaseController
         return $this->response->setJSON($data);
     }
 
-    private function getAllowedColumns($table_name)
-    {
-        $db = db_connect();
-
-        $column_sql = "SELECT column_name, required FROM public.form_metadata WHERE table_name = '" . $table_name . "' ORDER BY order_position ASC;";
-        $columns_entries = $db->query($column_sql)->getResultArray();
-
-
-        $allowed = [];
-
-        foreach ($columns_entries as $j => $column_entry) {
-            if ($column_entry["required"] == "t" || !$this->columnPremissionDenied($table_name, $column_entry['column_name'])) {
-                array_push($allowed, $column_entry['column_name']);
-            }
-        }
-
-        log_message("debug", json_encode($allowed));
-
-        return $allowed;
-    }
-
-    private function getLinks($results, $type, $allowed_columns, $id = null)
-    {
-        $t_links = [];
-        foreach ($results as $index => $result) {
-
-            if (!in_array($result['column_name'], $allowed_columns)) {
-                continue;
-            }
-
-            if ($result["to_foreign"] == 't') {
-
-                if (!array_key_exists($result['f_table'], $t_links)) {
-                    $t_links[$result["f_table"]] = [
-                        'table' => $result['f_table'],
-                        'type' => $type,
-                        'keys' => [$result['column_name']],
-                        'param' => $result['f_primary_key'],
-                        'index' => $id
-                    ];
-                } else {
-                    array_push($t_links[$result['f_table']]['keys'], $result['column_name']);
-                }
-
-            } else {
-                if (!array_key_exists($result['table_name'], $t_links)) {
-                    $t_links[$result["table_name"]] = [
-                        'table' => $result['table_name'],
-                        'type' => $type,
-                        'keys' => [$result['column_name']],
-                        'param' => 'id',
-                        'index' => $id
-                    ];
-                } else {
-                    array_push($t_links[$result['table_name']]['keys'], $result['column_name']);
-                }
-            }
-        }
-
-        $links = [];
-        foreach ($t_links as $key => $value) {
-            array_push($links, $value);
-        }
-
-        return $links;
-    }
-
-    private function getJoins($results, $allowed_columns)
-    {
-        $joins = [];
-        foreach ($results as $key => $result) {
-
-            if (!in_array($result['column_name'], $allowed_columns)) {
-                continue;
-            }
-
-            if ($result["to_foreign"] == "t") {
-                array_push($joins, [
-                    "table" => $result["f_table"],
-                    "key" => $result["f_primary_key"]
-                ]);
-            }
-        }
-        return $joins;
-    }
-
-    private function premissionDenied($table, $type, $index = -1)
+    private function columnPremissionDenied($column, $user)
     {
 
-        $db = db_connect();
+        log_message("debug", json_encode($column));
 
-        $sql = "SELECT
-    jsonb_agg(DISTINCT ag.group_name) AS add_roles,
-    jsonb_agg(DISTINCT eg.group_name) AS edit_roles,
-    jsonb_agg(DISTINCT sg.group_name) AS show_roles
-FROM table_metadata t
+        if ($column["required_permissions"] == null) {
+            return false;
+        }
 
-JOIN LATERAL jsonb_array_elements(t.add_roles) AS add_role_name ON true
-JOIN auth_groups_metadata ag ON ag.id = (add_role_name::text)::int
+        $permissions = json_decode($column["required_permissions"]);
 
-JOIN LATERAL jsonb_array_elements(t.edit_roles) AS edit_role_name ON true
-JOIN auth_groups_metadata eg ON eg.id = (edit_role_name::text)::int
-
-JOIN LATERAL jsonb_array_elements(t.show_roles) AS show_role_name ON true
-JOIN auth_groups_metadata sg ON sg.id = (show_role_name::text)::int
-
-WHERE t.table_name = '" . $table . "';";
-
-
-        $result = $db->query($sql)->getResultArray();
-
-        $auth = service('auth');
-        $user = $auth->user();
-
-        if ($index != -1) {
-            $sql1 = "SELECT rls_level FROM public.table_metadata WHERE table_name = '" . $table . "';";
-            $sql2 = "SELECT created_user_id FROM " . $table . " WHERE id = " . $index . ";";
-            $row = $db->query($sql2)->getResultArray()[0];
-            $table = $db->query($sql1)->getResultArray()[0];
-
-            if (!$this->rlsAllowed($table['rls_level'], $user, $row)) {
+        foreach ($permissions as $permission) {
+            if (!$user->can($permission)) {
                 return true;
             }
         }
 
-
-        if ($result[0][$type] == null) {
-            return false;
-        }
-
-
-        $decodedArray = json_decode($result[0][$type], true); // Decode JSON as an array
-
-        foreach ($decodedArray as $group) {
-            if ($user->inGroup($group)) {
-                return false; // User has permission
-            }
-        }
-
-
-        return true; // User doesn't have permission
+        return false;
     }
 
-    private function columnPremissionDenied($table, $column)
+    private function getPremissions($table, $user)
     {
-        $db = db_connect();
+        $show = json_decode($table["show_permissions"]);
+        $add = json_decode($table["add_permissions"]);
+        $edit = json_decode($table["edit_permissions"]);
 
-        $sql = "SELECT 
-    jsonb_agg(DISTINCT ag.group_name) AS roles
-
-FROM column_metadata t
-
-JOIN LATERAL jsonb_array_elements(t.allowed_roles) AS add_role_name ON true
-JOIN auth_groups_metadata ag ON ag.id = (add_role_name::text)::int
-
-
-WHERE t.table_name = '" . $table . "' AND t.column_name = '" . $column . "';";
-
-
-        $result = $db->query($sql)->getResultArray();
-
-        $auth = service('auth');
-        $user = $auth->user();
-
-        if ($result[0]['roles'] == null) {
-            return false;
-        }
-
-        $decodedArray = json_decode($result[0]['roles'], true); // Decode JSON as an array
-
-        // log_message("debug", json_encode($result));
-
-
-        foreach ($decodedArray as $group) {
-            if ($user->inGroup($group)) {
-                return false; // User has permission
-            }
-        }
-
-        return true; // User doesn't have permission
-    }
-
-    private function getPremissions($table)
-    {
-        $db = db_connect();
-
-        $sql = "SELECT 
-    jsonb_agg(DISTINCT ag.group_name) AS add_roles,
-    jsonb_agg(DISTINCT eg.group_name) AS edit_roles,
-    jsonb_agg(DISTINCT sg.group_name) AS show_roles
-FROM table_metadata t
-
-JOIN LATERAL jsonb_array_elements(t.add_roles) AS add_role_name ON true
-JOIN auth_groups_metadata ag ON ag.id = (add_role_name::text)::int
-
-JOIN LATERAL jsonb_array_elements(t.edit_roles) AS edit_role_name ON true
-JOIN auth_groups_metadata eg ON eg.id = (edit_role_name::text)::int
-
-JOIN LATERAL jsonb_array_elements(t.show_roles) AS show_role_name ON true
-JOIN auth_groups_metadata sg ON sg.id = (show_role_name::text)::int
-
-WHERE t.table_name = '" . $table . "';";
-
-        $result = $db->query($sql)->getResultArray();
-
-        $auth = service('auth');
-        $user = $auth->user();
+        $actions = ["show" => $show, "add" => $add, "edit" => $edit];
 
         $premissions = [];
 
-        foreach ($result[0] as $key => $roles) {
-
-            if ($roles == null) {
-                $premissions[$key] = true;
-                continue;
-            }
-
-            $decodedArray = json_decode($roles, true); // Decode JSON as an array
-            $premissions[$key] = false;
-
-            foreach ($decodedArray as $group) {
-                if ($user->inGroup($group)) {
-                    $premissions[$key] = true;
+        foreach ($actions as $key => $action) {
+            $premissions[$key] = true;
+            if ($action != null) {
+                foreach ($action as $premission) {
+                    if (!$user->can($premission)) {
+                        $premissions[$key] = false;
+                        break;
+                    }
                 }
             }
         }
@@ -507,30 +325,6 @@ WHERE t.table_name = '" . $table . "';";
         }
 
         return $rows;
-    }
-
-    private function rlsAllowed($rls_level, $user, $row)
-    {
-
-        $db = db_connect();
-
-        $uSql = "SELECT * FROM public.auth_groups_users WHERE user_id = " . $user->id . ";";
-        $group = $db->query($uSql)->getResultArray()[0]['group'];
-
-        $sql = "SELECT * FROM public.auth_groups_metadata WHERE group_name = '" . $group . "';";
-        $result = $db->query($sql)->getResultArray()[0];
-
-
-        switch ($rls_level) {
-            case 0:
-                return true;
-            case 1:
-                return ($row['created_user_id'] == $user->id);
-            case 2:
-                return ($result["access_level"] == 1);
-            case 3:
-                return ($row['created_user_id'] == $user->id);
-        }
     }
 
 }
