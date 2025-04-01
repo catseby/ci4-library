@@ -183,7 +183,7 @@ class TableController extends BaseController
         $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . $searchSql . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' ' . $asc . ' LIMIT ' . $limit . ' OFFSET ' . $offset . ';';
         $values = $db->query($sql)->getResultArray();
 
-        $values = $this->rlsFilter($values, $table_entry["rls_level"], $table_name);
+        $values = $this->premissionFilter($values, $this->getPremissions($table_entry, $user), $user, $table_name);
 
         foreach ($values as &$array) {
             foreach ($array as $key => &$value) {
@@ -237,13 +237,17 @@ class TableController extends BaseController
 
         $actions = ["show" => $show, "add" => $add, "edit" => $edit];
 
-        $premissions = [];
+        $premissions = ["show_created" => false, "edit_created" => false];
 
         foreach ($actions as $key => $action) {
             $premissions[$key] = true;
             if ($action != null) {
                 foreach ($action as $premission) {
-                    if (!$user->can($premission)) {
+                    if ($key == "show" and $premission == "user.created") {
+                        $premissions["show_created"] = true;
+                    } else if ($key == "edit" and $premission == "user.created") {
+                        $premissions["edit_created"] = true;
+                    } else if (!$user->can($premission)) {
                         $premissions[$key] = false;
                         break;
                     }
@@ -254,77 +258,26 @@ class TableController extends BaseController
         return $premissions;
     }
 
-    private function rlsFilter($rows, $rls_level, $table)
+    private function premissionFilter($rows, $premissions, $user, $table)
     {
-        $auth = service('auth');
-        $user = $auth->user();
-        $canEdit = true;
-        $editBlacklist = [];
-
-        switch ($rls_level) {
-
-            case 1:
-                $filtered = [];
-                foreach ($rows as $index => $row) {
-                    if ($row['created_user_id'] == $user->id) {
-                        array_push($filtered, $row);
-                    }
-                }
-                $rows = $filtered;
-                break;
-
-            case 2:
-                $db = db_connect();
-
-                $uSql = "SELECT * FROM public.auth_groups_users WHERE user_id = " . $user->id . ";";
-                $group = $db->query($uSql)->getResultArray()[0]['group'];
-
-                $sql = "SELECT * FROM public.auth_groups_metadata WHERE group_name = '" . $group . "';";
-                $result = $db->query($sql)->getResultArray()[0];
-
-                switch ($result['access_level']) {
-                    case 1:
-                        break;
-                    case 2:
-                        $canEdit = false;
-                        break;
-                    default:
-                        return [];
-                }
-                break;
-            case 3:
-                $db = db_connect();
-
-                $uSql = "SELECT * FROM public.auth_groups_users WHERE user_id = " . $user->id . ";";
-                $group = $db->query($uSql)->getResultArray()[0]['group'];
-
-                $sql = "SELECT * FROM public.auth_groups_metadata WHERE group_name = '" . $group . "';";
-                $result = $db->query($sql)->getResultArray()[0];
-
-                switch ($result['access_level']) {
-                    case 1:
-                        break;
-                    default:
-                        foreach ($rows as $index => $row) {
-                            if ($row['created_user_id'] != $user->id) {
-                                array_push($editBlacklist, $row["id"]);
-                            }
-                        }
-                }
-                break;
-            default:
-                break;
-        }
+        $filtered = [];
 
         foreach ($rows as $index => &$row) {
+
             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
             $prefix = $protocol . "://" . $_SERVER['HTTP_HOST'] . "/forms/" . $table;
             $edit_url = $prefix . "/edit/" . $rows[$index]["id"];
             $delete_url = $prefix . "/delete/" . $rows[$index]["id"];
-            $row["data_table_tools"] = ($canEdit && !in_array($row['id'], $editBlacklist)) ? '<a href="' . $edit_url . '">Edit</a><br><a href="' . $delete_url . '">Delete</a>' : "";
+            $row["data_table_tools"] = ($premissions["edit"] || ($premissions["edit_created"] && $row["created_user_id"] == $user->id)) ? '<a href="' . $edit_url . '">Edit</a><br><a href="' . $delete_url . '">Delete</a>' : "";
+
+            if ($premissions["show"] || ($premissions["edit_created"] && $row["created_user_id"] == $user->id)) {
+                array_push($filtered, $row);
+            }
         }
 
-        return $rows;
+        log_message("debug",json_encode($rows));
+
+        return $filtered;
     }
 
 }
