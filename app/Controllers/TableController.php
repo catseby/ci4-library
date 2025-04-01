@@ -243,9 +243,9 @@ class TableController extends BaseController
             $premissions[$key] = true;
             if ($action != null) {
                 foreach ($action as $premission) {
-                    if ($key == "show" and $premission == "user.created") {
+                    if ($key == "show" && $premission == "user.created") {
                         $premissions["show_created"] = true;
-                    } else if ($key == "edit" and $premission == "user.created") {
+                    } else if ($key == "edit" && $premission == "user.created") {
                         $premissions["edit_created"] = true;
                     } else if (!$user->can($premission)) {
                         $premissions[$key] = false;

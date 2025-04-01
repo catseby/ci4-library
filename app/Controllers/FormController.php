@@ -36,7 +36,7 @@ class FormController extends BaseController
     public function add($table)
     {
 
-        if ($this->premissionDenied($table, 'add_roles')) {
+        if ($this->premissionDenied($table, 'add')) {
             return $this->response->setStatusCode(403)->setBody('Access Denied');
         }
 
@@ -61,11 +61,10 @@ class FormController extends BaseController
 
         return view("form", $data);
     }
-
     public function create($name)
     {
 
-        if ($this->premissionDenied($name, 'add_roles')) {
+        if ($this->premissionDenied($name, 'add')) {
             return $this->response->setStatusCode(403)->setBody('Access Denied');
         }
 
@@ -130,7 +129,7 @@ class FormController extends BaseController
 
     public function edit($table, $index, $column)
     {
-        if ($this->premissionDenied($table, 'edit_roles', $index)) {
+        if ($this->premissionDenied($table, 'edit', $index)) {
             return $this->response->setStatusCode(403)->setBody('Access Denied');
         }
 
@@ -182,7 +181,7 @@ class FormController extends BaseController
 
     public function update($name, $index, $column)
     {
-        if ($this->premissionDenied($name, 'edit_roles')) {
+        if ($this->premissionDenied($name, 'edit', $index)) {
             return $this->response->setStatusCode(403)->setBody('Access Denied');
         }
 
@@ -269,7 +268,7 @@ class FormController extends BaseController
     public function destroy($name, $index, $column)
     {
 
-        if ($this->premissionDenied($name, 'edit_roles', $index)) {
+        if ($this->premissionDenied($name, 'edit', $index)) {
             return $this->response->setStatusCode(403)->setBody('Access Denied');
         }
 
@@ -295,7 +294,7 @@ class FormController extends BaseController
     public function destroy_with_files($name, $index, $column)
     {
 
-        if ($this->premissionDenied($name, 'edit_roles')) {
+        if ($this->premissionDenied($name, 'edit')) {
             return $this->response->setStatusCode(403)->setBody('Access Denied');
         }
 
@@ -589,11 +588,15 @@ class FormController extends BaseController
         $column_sql = "SELECT column_name, required FROM public.form_metadata WHERE table_name = '" . $table_name . "' ORDER BY order_position ASC;";
         $columns_entries = $db->query($column_sql)->getResultArray();
 
+        $auth = service('auth');
+        $user = $auth->user();
 
         $allowed = [];
 
         foreach ($columns_entries as $j => $column_entry) {
-            if ($column_entry["required"] == "t" || !$this->columnPremissionDenied($table_name, $column_entry['column_name'])) {
+            $column_metadata = $db->query("SELECT required_permissions FROM public.column_metadata WHERE column_name = '" . $column_entry["column_name"] . "';")->getResultArray()[0];
+
+            if ($column_entry["required"] == "t" || !$this->columnPremissionDenied($column_metadata, $user)) {
                 array_push($allowed, $column_entry['column_name']);
             }
         }
@@ -668,124 +671,81 @@ class FormController extends BaseController
         return $joins;
     }
 
-    private function premissionDenied($table, $type, $index = -1)
+    private function premissionDenied($table_name, $type, $index = -1)
     {
-
         $db = db_connect();
+        $table = $db->query("SELECT * FROM public.table_metadata WHERE table_name = '" . $table_name . "';")->getResultArray()[0];
 
-        $sql = "SELECT
-    jsonb_agg(DISTINCT ag.group_name) AS add_roles,
-    jsonb_agg(DISTINCT eg.group_name) AS edit_roles,
-    jsonb_agg(DISTINCT sg.group_name) AS show_roles
-FROM table_metadata t
-
-JOIN LATERAL jsonb_array_elements(t.add_roles) AS add_role_name ON true
-JOIN auth_groups_metadata ag ON ag.id = (add_role_name::text)::int
-
-JOIN LATERAL jsonb_array_elements(t.edit_roles) AS edit_role_name ON true
-JOIN auth_groups_metadata eg ON eg.id = (edit_role_name::text)::int
-
-JOIN LATERAL jsonb_array_elements(t.show_roles) AS show_role_name ON true
-JOIN auth_groups_metadata sg ON sg.id = (show_role_name::text)::int
-
-WHERE t.table_name = '" . $table . "';";
-
-
-        $result = $db->query($sql)->getResultArray();
 
         $auth = service('auth');
         $user = $auth->user();
+
+        $premissions = $this->getPremissions($table, $user);
+
+        if ($premissions[$type]) {
+            return false;
+        }
 
         if ($index != -1) {
-            $sql1 = "SELECT rls_level FROM public.table_metadata WHERE table_name = '" . $table . "';";
-            $sql2 = "SELECT created_user_id FROM " . $table . " WHERE id = " . $index . ";";
-            $row = $db->query($sql2)->getResultArray()[0];
-            $table = $db->query($sql1)->getResultArray()[0];
+            $row = $db->query("SELECT created_user_id FROM public." . $table_name . " WHERE id = " . $index . ";")->getResultArray()[0];
 
-            if (!$this->rlsAllowed($table['rls_level'], $user, $row)) {
-                return true;
-            }
-        }
-
-
-        if ($result[0][$type] == null) {
-            return false;
-        }
-
-
-        $decodedArray = json_decode($result[0][$type], true); // Decode JSON as an array
-
-        foreach ($decodedArray as $group) {
-            if ($user->inGroup($group)) {
-                return false; // User has permission
-            }
-        }
-
-
-        return true; // User doesn't have permission
-    }
-
-    private function columnPremissionDenied($table, $column)
-    {
-        $db = db_connect();
-
-        $sql = "SELECT 
-    jsonb_agg(DISTINCT ag.group_name) AS roles
-
-FROM column_metadata t
-
-JOIN LATERAL jsonb_array_elements(t.allowed_roles) AS add_role_name ON true
-JOIN auth_groups_metadata ag ON ag.id = (add_role_name::text)::int
-
-
-WHERE t.table_name = '" . $table . "' AND t.column_name = '" . $column . "';";
-
-
-        $result = $db->query($sql)->getResultArray();
-
-        $auth = service('auth');
-        $user = $auth->user();
-
-        if ($result[0]['roles'] == null) {
-            return false;
-        }
-
-        $decodedArray = json_decode($result[0]['roles'], true); // Decode JSON as an array
-
-        // log_message("debug", json_encode($result));
-
-
-        foreach ($decodedArray as $group) {
-            if ($user->inGroup($group)) {
-                return false; // User has permission
+            if ($premissions["show_created"] && $type == "show" && $user->id == $row["created_user_id"]) {
+                return false;
+            // } else if ($premissions["add_created"] && $type == "add" && $user->id == $row["created_user_id"]) {
+            //     return false;
+            } else if ($premissions["edit_created"] && $type == "edit" && $user->id == $row["created_user_id"]) {
+                return false;
             }
         }
 
         return true; // User doesn't have permission
     }
-
-    private function rlsAllowed($rls_level, $user, $row)
+    private function columnPremissionDenied($column, $user)
     {
-
-        $db = db_connect();
-
-        $uSql = "SELECT * FROM public.auth_groups_users WHERE user_id = " . $user->id . ";";
-        $group = $db->query($uSql)->getResultArray()[0]['group'];
-
-        $sql = "SELECT * FROM public.auth_groups_metadata WHERE group_name = '" . $group . "';";
-        $result = $db->query($sql)->getResultArray()[0];
-
-
-        switch ($rls_level) {
-            case 0:
-                return true;
-            case 1:
-                return ($row['created_user_id'] == $user->id);
-            case 2:
-                return ($result["access_level"] == 1);
-            case 3:
-                return ($row['created_user_id'] == $user->id);
+        
+        if ($column["required_permissions"] == null) {
+            return false;
         }
+
+        $permissions = json_decode($column["required_permissions"]);
+
+        foreach ($permissions as $permission) {
+            if (!$user->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
     }
+
+    private function getPremissions($table, $user)
+    {
+        $show = json_decode($table["show_permissions"]);
+        $add = json_decode($table["add_permissions"]);
+        $edit = json_decode($table["edit_permissions"]);
+
+        $actions = ["show" => $show, "add" => $add, "edit" => $edit];
+
+        $premissions = ["show_created" => false, "edit_created" => false];
+
+        foreach ($actions as $key => $action) {
+            $premissions[$key] = true;
+            if ($action != null) {
+                foreach ($action as $premission) {
+                    if ($key == "show" && $premission == "user.created") {
+                        $premissions["show_created"] = true;
+                    } else if ($key == "edit" && $premission == "user.created") {
+                        $premissions["edit_created"] = true;
+                    } else if (!$user->can($premission)) {
+                        $premissions[$key] = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $premissions;
+    }
+
 
 }
