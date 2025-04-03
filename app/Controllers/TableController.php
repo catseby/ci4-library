@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Filters\FormFilter;
 use App\Models\FormTemplateModel;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Models\FormModel;
@@ -18,6 +19,8 @@ class TableController extends BaseController
         $table_sql = 'SELECT * FROM public.table_metadata;';
         $table_names = $db->query($table_sql)->getResultArray();
 
+        $filter = new FormFilter();
+
         $auth = service('auth');
         $user = $auth->user();
 
@@ -27,9 +30,9 @@ class TableController extends BaseController
 
             $table_name = $table_name_row['table_name'];
 
-            $premissions = $this->getPremissions($table_name_row, $user);
+            $premissions = $filter->getPremissions($table_name, $user);
 
-            if ($premissions["show"] != true) {
+            if ($premissions["fetch"] != true) {
                 continue;
             }
 
@@ -43,7 +46,7 @@ class TableController extends BaseController
 
             $column_names = [["data" => "id", "title" => "id"]];
             foreach ($columns_entries as $j => $column_entry) {
-                if ($this->columnPremissionDenied($column_entry, $user)) {
+                if ($filter->columnPremissionDenied($column_entry, $user)) {
                     continue;
                 }
                 array_push($column_names, ["data" => $column_entry['column_name'], "title" => $column_entry['column_name']]);
@@ -69,33 +72,26 @@ class TableController extends BaseController
 
     public function fetchDatatables($table)
     {
+        $filter = new FormFilter();
+
         $auth = service('auth');
         $user = $auth->user();
 
         $db = db_connect();
 
         $asc = $this->request->getPost('order')[0]['dir'] ?? 'asc';
-
         $columnIndex = $this->request->getPost('order')[0]['column'] ?? 0;
         $columnsArray = $this->request->getPost('columns');
-
         $columns = array_column($columnsArray, 'data');
         $column = $columns[intval($columnIndex)];
-
         $offset = $this->request->getPost('start') ?? 0;
         $limit = $this->request->getPost('length') ?? 'NULL';
-
         $searchValue = $this->request->getPost('search')['value'] ?? "";
-
-        $table_name = $table;
-
         $draw = $this->request->getPost('draw');
-
-
+        
         $data = [];
 
         $table_name = $table;
-
 
         $table_sql = "SELECT * FROM public.table_metadata WHERE table_name = '" . $table_name . "';";
         $table_entry = $db->query($table_sql)->getResultArray()[0];
@@ -121,7 +117,7 @@ class TableController extends BaseController
 
         foreach ($columns_entries as $j => $column_entry) {
 
-            if ($this->columnPremissionDenied($column_entry, $user)) {
+            if ($filter->columnPremissionDenied($column_entry, $user)) {
                 continue;
             }
 
@@ -183,7 +179,7 @@ class TableController extends BaseController
         $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . $searchSql . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' ' . $asc . ' LIMIT ' . $limit . ' OFFSET ' . $offset . ';';
         $values = $db->query($sql)->getResultArray();
 
-        $values = $this->premissionFilter($values, $this->getPremissions($table_entry, $user), $user, $table_name);
+        $values = $this->premissionFilter($values, $filter->getPremissions($table_name, $user), $user, $table_name);
 
         foreach ($values as &$array) {
             foreach ($array as $key => &$value) {
@@ -209,55 +205,6 @@ class TableController extends BaseController
         return $this->response->setJSON($data);
     }
 
-    private function columnPremissionDenied($column, $user)
-    {
-
-        log_message("debug", json_encode($column));
-
-        if ($column["required_permissions"] == null) {
-            return false;
-        }
-
-        $permissions = json_decode($column["required_permissions"]);
-
-        foreach ($permissions as $permission) {
-            if (!$user->can($permission)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function getPremissions($table, $user)
-    {
-        $show = json_decode($table["show_permissions"]);
-        $add = json_decode($table["add_permissions"]);
-        $edit = json_decode($table["edit_permissions"]);
-
-        $actions = ["show" => $show, "add" => $add, "edit" => $edit];
-
-        $premissions = ["show_created" => false, "edit_created" => false];
-
-        foreach ($actions as $key => $action) {
-            $premissions[$key] = true;
-            if ($action != null) {
-                foreach ($action as $premission) {
-                    if ($key == "show" && $premission == "user.created") {
-                        $premissions["show_created"] = true;
-                    } else if ($key == "edit" && $premission == "user.created") {
-                        $premissions["edit_created"] = true;
-                    } else if (!$user->can($premission)) {
-                        $premissions[$key] = false;
-                        break;
-                    }
-                }
-            }
-        }
-
-        return $premissions;
-    }
-
     private function premissionFilter($rows, $premissions, $user, $table)
     {
         $filtered = [];
@@ -270,12 +217,10 @@ class TableController extends BaseController
             $delete_url = $prefix . "/delete/" . $rows[$index]["id"];
             $row["data_table_tools"] = ($premissions["edit"] || ($premissions["edit_created"] && $row["created_user_id"] == $user->id)) ? '<a href="' . $edit_url . '">Edit</a><br><a href="' . $delete_url . '">Delete</a>' : "";
 
-            if ($premissions["show"] || ($premissions["edit_created"] && $row["created_user_id"] == $user->id)) {
+            if ($premissions["fetch"] || ($premissions["edit_created"] && $row["created_user_id"] == $user->id)) {
                 array_push($filtered, $row);
             }
         }
-
-        log_message("debug",json_encode($rows));
 
         return $filtered;
     }

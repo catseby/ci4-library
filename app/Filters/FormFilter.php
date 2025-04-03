@@ -28,20 +28,22 @@ class FormFilter implements FilterInterface
         $auth = service('auth');
         $user = $auth->user();
 
-        $uri = service('uri');
+        $uri = $request->getUri();
         $table_name = $uri->getSegment(2);
-        // $type = $uri->getSegment(2);
+
+        log_message("debug",$table_name);
+        $type = $uri->getSegment(3);
 
         $premissions = $this->getPremissions($table_name, $user);
 
-        if (!$premissions["'add"]) {
+        if (!$premissions[$type]) {
             return service('response')
                 ->setStatusCode(403) // Forbidden
                 ->setBody('Access Denied Filter');
         }
     }
 
-    private function getPremissions($table_name, $user)
+    public function getPremissions($table_name, $user)
     {
         $db = db_connect();
         $table = $db->query("SELECT * FROM table_metadata WHERE table_name = '" . $table_name . "';")->getResultArray()[0];
@@ -73,6 +75,24 @@ class FormFilter implements FilterInterface
         return $premissions;
     }
 
+    public function columnPremissionDenied($column, $user)
+    {
+
+        if ($column["required_permissions"] == null) {
+            return false;
+        }
+
+        $permissions = json_decode($column["required_permissions"]);
+
+        foreach ($permissions as $permission) {
+            if (!$user->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
     /**
      * Allows After filters to inspect and modify the response
      * object as needed. This method does not allow any way

@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Filters\FormFilter;
 use App\Models\FormTemplateModel;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Models\FormModel;
@@ -47,8 +48,6 @@ class FormController extends BaseController
         $schema = $this->getSchema($table, $results, $allowed_columns);
         $form = $this->getForm($results, "Create", $allowed_columns);
         $links = $this->getLinks($results, "add", $allowed_columns);
-
-        log_message("debug", json_encode($links));
 
         $data = [
             'name' => $table,
@@ -156,9 +155,6 @@ class FormController extends BaseController
         $query = $db->query($sql);
         $result = $query->getResultArray();
 
-        // log_message("debug", $sql);
-        // log_message("debug", json_encode($result));
-
         foreach ($result[0] as $key => $value) {
             $decoded = json_decode($value, true);
             if ($decoded != null) {
@@ -188,8 +184,6 @@ class FormController extends BaseController
 
         $files = $this->request->getFiles();
         $post = $this->request->getPost();
-
-        log_message("debug", json_encode($post));
 
         $db = db_connect();
 
@@ -272,7 +266,6 @@ class FormController extends BaseController
             return $this->response->setStatusCode(403)->setBody('Access Denied');
         }
 
-
         $db = db_connect();
 
         $query = 'DELETE FROM public.' . $name . ' WHERE ' . $column . ' = ' . $index;
@@ -317,7 +310,6 @@ class FormController extends BaseController
 
         foreach ($valid_column_arr as $valid_column_key => $valid_column) {
             $column_name = $valid_column['column_name'];
-            log_message("debug", $column_name);
             foreach ($results as $key => $result) {
                 unlink("./uploads/" . $result[$column_name]);
             }
@@ -591,17 +583,17 @@ class FormController extends BaseController
         $auth = service('auth');
         $user = $auth->user();
 
+        $filter = new FormFilter();
+
         $allowed = [];
 
         foreach ($columns_entries as $j => $column_entry) {
             $column_metadata = $db->query("SELECT required_permissions FROM public.column_metadata WHERE column_name = '" . $column_entry["column_name"] . "';")->getResultArray()[0];
 
-            if ($column_entry["required"] == "t" || !$this->columnPremissionDenied($column_metadata, $user)) {
+            if ($column_entry["required"] == "t" || !$filter->columnPremissionDenied($column_metadata, $user)) {
                 array_push($allowed, $column_entry['column_name']);
             }
         }
-
-        log_message("debug", json_encode($allowed));
 
         return $allowed;
     }
@@ -676,11 +668,12 @@ class FormController extends BaseController
         $db = db_connect();
         $table = $db->query("SELECT * FROM public.table_metadata WHERE table_name = '" . $table_name . "';")->getResultArray()[0];
 
+        $filter = new FormFilter();
 
         $auth = service('auth');
         $user = $auth->user();
 
-        $premissions = $this->getPremissions($table, $user);
+        $premissions = $filter->getPremissions($table_name, $user);
 
         if ($premissions[$type]) {
             return false;
@@ -700,52 +693,4 @@ class FormController extends BaseController
 
         return true; // User doesn't have permission
     }
-    private function columnPremissionDenied($column, $user)
-    {
-        
-        if ($column["required_permissions"] == null) {
-            return false;
-        }
-
-        $permissions = json_decode($column["required_permissions"]);
-
-        foreach ($permissions as $permission) {
-            if (!$user->can($permission)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function getPremissions($table, $user)
-    {
-        $show = json_decode($table["show_permissions"]);
-        $add = json_decode($table["add_permissions"]);
-        $edit = json_decode($table["edit_permissions"]);
-
-        $actions = ["show" => $show, "add" => $add, "edit" => $edit];
-
-        $premissions = ["show_created" => false, "edit_created" => false];
-
-        foreach ($actions as $key => $action) {
-            $premissions[$key] = true;
-            if ($action != null) {
-                foreach ($action as $premission) {
-                    if ($key == "show" && $premission == "user.created") {
-                        $premissions["show_created"] = true;
-                    } else if ($key == "edit" && $premission == "user.created") {
-                        $premissions["edit_created"] = true;
-                    } else if (!$user->can($premission)) {
-                        $premissions[$key] = false;
-                        break;
-                    }
-                }
-            }
-        }
-
-        return $premissions;
-    }
-
-
 }
