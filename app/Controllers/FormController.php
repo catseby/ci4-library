@@ -12,28 +12,6 @@ use CodeIgniter\Shield\Exceptions\AccessDeniedException;
 
 class FormController extends BaseController
 {
-    public function fetch($table, $column)
-    {
-        $sql = 'SELECT id, ' . $column . ' AS item FROM public.' . $table . ';';
-
-        $db = db_connect();
-
-        $result = $db->query($sql)->getResultArray();
-
-        return json_encode($result);
-    }
-
-    public function fetchWhere($table, $column, $target, $value)
-    {
-        $sql = 'SELECT id, ' . $column . ' AS item FROM public.' . $table . ' WHERE ' . $target . " = '" . $value . "';";
-
-        $db = db_connect();
-
-        $result = $db->query($sql)->getResultArray();
-
-        return json_encode($result);
-    }
-
     public function add($table)
     {
 

@@ -70,7 +70,7 @@ class TableController extends BaseController
         return view('datatables', $data);
     }
 
-    public function fetchDatatables($table)
+    public function fetch($table)
     {
         $filter = new FormFilter();
 
@@ -203,6 +203,18 @@ class TableController extends BaseController
 
 
         return $this->response->setJSON($data);
+    }
+
+    public function add(){
+
+    }
+
+    public function update(){
+
+    }
+
+    public  function destroy() {
+        
     }
 
     private function premissionFilter($rows, $premissions, $user, $table)
