@@ -11,7 +11,7 @@ $routes->get('/forms', 'TableController::index');
 
 $routes->post('/forms/(:segment)/fetch/datatables', 'TableController::fetch/$1');
 
-$routes->post('/forms/add', 'TableController::add');
+$routes->get('/table/add', 'TableController::add');
 $routes->post('/forms/edit/(:segment)', 'TableController::update');
 $routes->post('/forms/delete/(:segment)', 'TableController::destroy');
 

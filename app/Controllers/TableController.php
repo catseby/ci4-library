@@ -206,7 +206,7 @@ class TableController extends BaseController
     }
 
     public function add(){
-
+        return view("table_create.php");
     }
 
     public function update(){

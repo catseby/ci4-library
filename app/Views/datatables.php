@@ -87,7 +87,34 @@
             }
         }
 
-        let schema_template = {};
+        let schema_template = {
+            "tablee": {
+                "type": "object",
+                "properties": {
+                    "table_name": {
+                        "type": "string",
+                        "title": "Table Name"
+                    },
+                    "columns": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "title": "Column",
+                            "properties": {
+                                "column_name": {
+                                    "type": "string",
+                                    "title": "Column Name"
+                                },
+                                "data_type": {
+                                    "type": "string",
+                                    "title": "Data Type"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
 
         let form_template = {
             type: 'fieldset',
@@ -113,6 +140,14 @@
             form_template.items[0].items.push(json);
         }
 
+        form_template.items[0].items.push({
+            type: "tab",
+            title: "Create New +",
+            items: [
+                { "key": "table" },
+            ],
+        });
+
         $("#form-tables").jsonForm({
             schema: schema_template,
             form: form_template
@@ -129,6 +164,7 @@
 
             createDynamicTable(tableName, data.columns, data.server_side, data.add, data.edit);
         }
+
 
     </script>
 </body>
