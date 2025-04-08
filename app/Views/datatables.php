@@ -58,7 +58,7 @@
                     processing: true,
                     serverSide: true,
                     ajax: {
-                        url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/fetch/datatables",
+                        url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/tables/" + tableName + "/fetch",
                         type: "POST"
                     },
                     autoWidth: true,
@@ -66,7 +66,7 @@
             } else {
 
                 $.ajax({
-                    url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/forms/" + tableName + "/fetch/datatables",
+                    url: "http://" + "<?php echo $_SERVER['HTTP_HOST'] ?>/tables/" + tableName + "/fetch",
                     method: "POST", // First change type to method here    
                     data: {
                         columns: raw_columns
@@ -87,35 +87,7 @@
             }
         }
 
-        let schema_template = {
-            "tablee": {
-                "type": "object",
-                "properties": {
-                    "table_name": {
-                        "type": "string",
-                        "title": "Table Name"
-                    },
-                    "columns": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "title": "Column",
-                            "properties": {
-                                "column_name": {
-                                    "type": "string",
-                                    "title": "Column Name"
-                                },
-                                "data_type": {
-                                    "type": "string",
-                                    "title": "Data Type"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        };
-
+        let schema_template = {};
         let form_template = {
             type: 'fieldset',
             items: [{
@@ -139,14 +111,6 @@
             };
             form_template.items[0].items.push(json);
         }
-
-        form_template.items[0].items.push({
-            type: "tab",
-            title: "Create New +",
-            items: [
-                { "key": "table" },
-            ],
-        });
 
         $("#form-tables").jsonForm({
             schema: schema_template,

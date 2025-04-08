@@ -7,13 +7,13 @@ use CodeIgniter\Router\RouteCollection;
  */
 
 
-$routes->get('/forms', 'TableController::index');
+$routes->get('/tables', 'TableController::index');
 
-$routes->post('/forms/(:segment)/fetch/datatables', 'TableController::fetch/$1');
+$routes->post('/tables/(:segment)/fetch', 'TableController::fetch/$1');
 
-$routes->get('/table/add', 'TableController::add');
-$routes->post('/forms/edit/(:segment)', 'TableController::update');
-$routes->post('/forms/delete/(:segment)', 'TableController::destroy');
+// $routes->get('/tables/add', 'TableController::add');
+// $routes->post('/tables/edit/(:segment)', 'TableController::update');
+// $routes->post('tables/delete/(:segment)', 'TableController::destroy');
 
 $routes->get('/forms/(:segment)/add', 'FormController::add/$1');
 $routes->post('/forms/(:segment)/add', 'FormController::create/$1');

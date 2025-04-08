@@ -88,7 +88,7 @@ class TableController extends BaseController
         $limit = $this->request->getPost('length') ?? 'NULL';
         $searchValue = $this->request->getPost('search')['value'] ?? "";
         $draw = $this->request->getPost('draw');
-        
+
         $data = [];
 
         $table_name = $table;
@@ -205,16 +205,34 @@ class TableController extends BaseController
         return $this->response->setJSON($data);
     }
 
-    public function add(){
-        return view("table_create.php");
+    public function add($post)
+    {
+        $table = $post["table_name"];
+
+        $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
+        id SERIAL PRIMARY KEY,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        created_user_id INT,
+        updated_user_id INT);";
+
+        $db = db_connect();
+
+        $db->query($sql);
+
+        $error = $db->error();
+
+        return $error["code" == 0];
     }
 
-    public function update(){
+    public function update()
+    {
 
     }
 
-    public  function destroy() {
-        
+    public function destroy()
+    {
+
     }
 
     private function premissionFilter($rows, $premissions, $user, $table)

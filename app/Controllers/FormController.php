@@ -7,6 +7,7 @@ use App\Filters\FormFilter;
 use App\Models\FormTemplateModel;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Models\FormModel;
+use App\Controllers\TableController;
 use CodeIgniter\Shield\Authentication\Auth;
 use CodeIgniter\Shield\Exceptions\AccessDeniedException;
 
