@@ -51,6 +51,11 @@ class FormController extends BaseController
         $post = $this->request->getPost();
         $id = null;
 
+        if ($name == "table_metadata") {
+            $tableController = new TableController();
+
+            $tableController->addTable($post["table_name"]);
+        }
 
         $db = db_connect();
 
@@ -569,7 +574,7 @@ class FormController extends BaseController
         foreach ($columns_entries as $j => $column_entry) {
             $column_metadata = $db->query("SELECT required_permissions FROM public.column_metadata WHERE column_name = '" . $column_entry["column_name"] . "';")->getResultArray()[0];
 
-            if ($column_entry["required"] == "t" || !$filter->columnPremissionDenied($column_metadata, $user)) {
+            if ($column_entry["required"] == "t" || !$filter->columnPremissionDenied($column_metadata["required_permissions"], $user)) {
                 array_push($allowed, $column_entry['column_name']);
             }
         }
@@ -663,8 +668,8 @@ class FormController extends BaseController
 
             if ($premissions["show_created"] && $type == "show" && $user->id == $row["created_user_id"]) {
                 return false;
-            // } else if ($premissions["add_created"] && $type == "add" && $user->id == $row["created_user_id"]) {
-            //     return false;
+                // } else if ($premissions["add_created"] && $type == "add" && $user->id == $row["created_user_id"]) {
+                //     return false;
             } else if ($premissions["edit_created"] && $type == "edit" && $user->id == $row["created_user_id"]) {
                 return false;
             }

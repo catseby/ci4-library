@@ -75,14 +75,14 @@ class FormFilter implements FilterInterface
         return $premissions;
     }
 
-    public function columnPremissionDenied($column, $user)
+    public function columnPremissionDenied($required_permissions, $user)
     {
 
-        if ($column["required_permissions"] == null) {
+        if ($required_permissions == null) {
             return false;
         }
 
-        $permissions = json_decode($column["required_permissions"]);
+        $permissions = json_decode($required_permissions);
 
         foreach ($permissions as $permission) {
             if (!$user->can($permission)) {

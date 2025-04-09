@@ -46,7 +46,7 @@ class TableController extends BaseController
 
             $column_names = [["data" => "id", "title" => "id"]];
             foreach ($columns_entries as $j => $column_entry) {
-                if ($filter->columnPremissionDenied($column_entry, $user)) {
+                if ($filter->columnPremissionDenied($column_entry["required_permissions"], $user)) {
                     continue;
                 }
                 array_push($column_names, ["data" => $column_entry['column_name'], "title" => $column_entry['column_name']]);
@@ -117,7 +117,7 @@ class TableController extends BaseController
 
         foreach ($columns_entries as $j => $column_entry) {
 
-            if ($filter->columnPremissionDenied($column_entry, $user)) {
+            if ($filter->columnPremissionDenied($column_entry["required_permissions"], $user)) {
                 continue;
             }
 
@@ -205,10 +205,8 @@ class TableController extends BaseController
         return $this->response->setJSON($data);
     }
 
-    public function add($post)
+    public function addTable($table)
     {
-        $table = $post["table_name"];
-
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
         id SERIAL PRIMARY KEY,
         created_at TIMESTAMP DEFAULT NOW(),
