@@ -201,7 +201,7 @@ class FormController extends BaseController
                 $keys[] = 'updated_user_id = ?';
                 $keys[] = 'updated_at = ?';
 
-                $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
+                $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(', ', array_fill(0, count($data), '?')) . ');';
                 $db->query($query, array_values($data));
 
             }
@@ -213,25 +213,17 @@ class FormController extends BaseController
                     $data[$key] = $value;
                     $keys[] = $key . " = ?";
                 }
-                // else if ($value == 'true') {
-                //     $data[$key] = true;
-                // }
-                // else if ($value == 'false') {
-                //     $data[$key] = false;
-                // }
-                // $keys[] = $key . " = ?";
-
-                $user = auth()->user();
-                $userId = $user->id ?? null;
-                $timestamp = date('Y-m-d H:i:s');
-
-                $data['updated_user_id'] = $userId;
-                $data['updated_at'] = $timestamp;
-
-                $keys[] = 'updated_user_id = ?';
-                $keys[] = 'updated_at = ?';
-
             }
+
+            $user = auth()->user();
+            $userId = $user->id ?? null;
+            $timestamp = date('Y-m-d H:i:s');
+
+            $data['updated_user_id'] = $userId;
+            $data['updated_at'] = $timestamp;
+
+            $keys[] = 'updated_user_id = ?';
+            $keys[] = 'updated_at = ?';
 
 
             $sql = 'UPDATE public.' . $name . ' SET ' . implode(',', $keys) . ' WHERE ' . $column . ' = ' . $index;

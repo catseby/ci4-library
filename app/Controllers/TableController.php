@@ -220,7 +220,11 @@ class TableController extends BaseController
 
         $error = $db->error();
 
-        return $error["code" == 0];
+        if ($error['code'] != 0) {
+            return false;
+        }
+
+        return true;
     }
 
     public function update()
