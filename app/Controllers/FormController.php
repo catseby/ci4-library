@@ -7,6 +7,7 @@ use App\Filters\FormFilter;
 use App\Models\FormTemplateModel;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Models\FormModel;
+use App\Models\TableModel;
 use App\Controllers\TableController;
 use CodeIgniter\Shield\Authentication\Auth;
 use CodeIgniter\Shield\Exceptions\AccessDeniedException;
@@ -50,12 +51,6 @@ class FormController extends BaseController
         $files = $this->request->getFiles();
         $post = $this->request->getPost();
         $id = null;
-
-        if ($name == "table_metadata") {
-            $tableController = new TableController();
-
-            $tableController->addTable($post["table_name"]);
-        }
 
         $db = db_connect();
 
@@ -104,9 +99,14 @@ class FormController extends BaseController
             $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
             $query = $db->query($query, array_values($data));
             $id = $db->insertID();
+
+            if ($name == "table_metadata") {
+                $tableController = new TableModel();
+
+                $tableController->addTable($post["table_name"]);
+            }
         }
 
-        log_message("debug", $id);
         return json_encode(['id' => $id]);
     }
 
@@ -225,11 +225,15 @@ class FormController extends BaseController
             $keys[] = 'updated_user_id = ?';
             $keys[] = 'updated_at = ?';
 
+            $beforeValues = $db->query("SELECT * FROM public." . $name . " WHERE " . $column . " = " . $index)->getResultArray()[0];
 
             $sql = 'UPDATE public.' . $name . ' SET ' . implode(',', $keys) . ' WHERE ' . $column . ' = ' . $index;
-            log_message("debug", json_encode($data));
             $db->query($sql, array_values($data));
 
+            if ($name == "table_metadata") {
+                $tableModel = new TableModel();
+                $tableModel->alterTable($beforeValues["table_name"], $post["table_name"]);
+            }
         }
 
         return json_encode(['id' => $index]);
@@ -244,8 +248,15 @@ class FormController extends BaseController
 
         $db = db_connect();
 
+        $beforeValues = $db->query("SELECT * FROM public." . $name . " WHERE " . $column . " = " . $index)->getResultArray()[0];
+
         $query = 'DELETE FROM public.' . $name . ' WHERE ' . $column . ' = ' . $index;
         $db->query($query);
+
+        if ($name == "table_metadata") {
+            $tableModel = new TableModel();
+            $tableModel->deleteTable($beforeValues["table_name"]);
+        }
 
         $data = [
             'name' => "Entry from " . $name . ' was deleted.',

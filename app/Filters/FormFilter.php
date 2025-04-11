@@ -52,7 +52,7 @@ class FormFilter implements FilterInterface
         $add = json_decode($table["add_permissions"]);
         $edit = json_decode($table["edit_permissions"]);
 
-        $actions = ["fetch" => $show, "add" => $add, "edit" => $edit];
+        $actions = ["fetch" => $show, "add" => $add, "edit" => $edit, 'delete' => $edit];
 
         $premissions = ["show_created" => false, "edit_created" => false];
 

@@ -205,38 +205,6 @@ class TableController extends BaseController
         return $this->response->setJSON($data);
     }
 
-    public function addTable($table)
-    {
-        $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
-        id SERIAL PRIMARY KEY,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        created_user_id INT,
-        updated_user_id INT);";
-
-        $db = db_connect();
-
-        $db->query($sql);
-
-        $error = $db->error();
-
-        if ($error['code'] != 0) {
-            return false;
-        }
-
-        return true;
-    }
-
-    public function update()
-    {
-
-    }
-
-    public function destroy()
-    {
-
-    }
-
     private function premissionFilter($rows, $premissions, $user, $table)
     {
         $filtered = [];
