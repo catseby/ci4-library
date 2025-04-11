@@ -29,6 +29,9 @@ class TableModel
 
         $sql2 = "UPDATE public.column_metadata SET table_name = '" . $new_name . "' WHERE table_name = '" . $table_name . "';";
         $this->db->query($sql2);
+
+        $sql3 = "UPDATE public.form_metadata SET table_name = '" . $new_name . "' WHERE table_name = '" . $table_name . "';";
+        $this->db->query($sql3);
     }
 
     public function deleteTable($table_name) {
@@ -37,6 +40,9 @@ class TableModel
 
         $sql2 = "DELETE FROM public.column_metadata WHERE table_name = '" . $table_name . "';";
         $this->db->query($sql2);
+
+        $sql3 = "DELETE FROM public.form_metadata WHERE table_name = '" . $table_name . "';";
+        $this->db->query($sql3);
     }
 
     public function addColumn($table_name, $column) {
