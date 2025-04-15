@@ -102,8 +102,14 @@ class FormController extends BaseController
 
             if ($name == "table_metadata") {
                 $tableController = new TableModel();
-
                 $tableController->addTable($post["table_name"]);
+            }
+            else if ($name == "column_metadata") {
+                $insertedID = $db->insertID();
+                $inserted_column = $db->query("SELECT * FROM column_metadata WHERE id = " . $insertedID . ";")->getResultArray()[0];
+
+                $tableController = new TableModel();
+                $tableController->addColumn($post["table_name"], $inserted_column);
             }
         }
 

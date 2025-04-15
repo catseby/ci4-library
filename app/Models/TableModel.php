@@ -46,7 +46,39 @@ class TableModel
     }
 
     public function addColumn($table_name, $column) {
+        $existing_columns = $this->db->query("SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "_new' ORDER BY ordinal_position;")->getResultArray();
+        $new_sql = "CREATE TABLE " . $table_name . "_new (id SERIAL PRIMARY KEY, ";
+        $values = [];
 
+        foreach($existing_columns as $index => $existing_column) {
+            $s = $existing_column["column_name"] . " ";
+            $s .= str_replace("()", "(" . $existing_column["max_char_length"] . ")", $existing_column["data_type"]) . " ";
+            $s .= ($existing_column["required"] == "t") ? "NOT NULL, " : ", ";
+
+            array_push($values, $existing_column["column_name"]);
+
+            $new_sql .= $s;
+        }
+
+        $ns = $column["column_name"] . " ";
+        $ns .= str_replace("()", "(" . $column["max_char_length"] . ")", $column["data_type"]) . " ";
+        $ns .= ($column["required"] == "t") ? "NOT NULL, " : ", ";
+
+        // array_push($values, $column["column_name"]);
+
+        $new_sql .= $ns;
+
+        $new_sql .= "created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW(), created_user_id INT, updated_user_id INT);";
+
+        array_push($values, "created_at", "updated_at", "created_user_id", "updated_user_id");
+
+        $this->db->query($new_sql);
+
+        $this->db->query("INSERT INTO " . $table_name . "_new (" . implode(", ",$values) . ") SELECT " . implode(", ",$values) . " FROM " . $table_name . ";");
+
+        $this->db->query("DROP TABLE " . $table_name . ";");
+
+        $this->db->query("ALTER TABLE " . $table_name . "_new RENAME TO " . $table_name . ";");
     }
 
     public function alterColumn($table_name, $column) {
