@@ -7,8 +7,9 @@ class TableModel
 
     protected $db;
 
-    public function __construct() {
-        $this->db  = db_connect();
+    public function __construct()
+    {
+        $this->db = db_connect();
     }
 
     public function addTable($table_name)
@@ -23,7 +24,8 @@ class TableModel
         $this->db->query($sql);
     }
 
-    public function alterTable($table_name, $new_name) {
+    public function alterTable($table_name, $new_name)
+    {
         $sql = "ALTER TABLE " . $table_name . " RENAME TO " . $new_name . ";";
         $this->db->query($sql);
 
@@ -34,8 +36,9 @@ class TableModel
         $this->db->query($sql3);
     }
 
-    public function deleteTable($table_name) {
-        $sql = "DROP TABLE " . $table_name  .";";
+    public function deleteTable($table_name)
+    {
+        $sql = "DROP TABLE " . $table_name . ";";
         $this->db->query($sql);
 
         $sql2 = "DELETE FROM public.column_metadata WHERE table_name = '" . $table_name . "';";
@@ -45,48 +48,40 @@ class TableModel
         $this->db->query($sql3);
     }
 
-    public function addColumn($table_name, $column) {
-        $existing_columns = $this->db->query("SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "_new' ORDER BY ordinal_position;")->getResultArray();
-        $new_sql = "CREATE TABLE " . $table_name . "_new (id SERIAL PRIMARY KEY, ";
-        $values = [];
-
-        foreach($existing_columns as $index => $existing_column) {
-            $s = $existing_column["column_name"] . " ";
-            $s .= str_replace("()", "(" . $existing_column["max_char_length"] . ")", $existing_column["data_type"]) . " ";
-            $s .= ($existing_column["required"] == "t") ? "NOT NULL, " : ", ";
-
-            array_push($values, $existing_column["column_name"]);
-
-            $new_sql .= $s;
-        }
-
+    public function addColumn($column)
+    {
         $ns = $column["column_name"] . " ";
         $ns .= str_replace("()", "(" . $column["max_char_length"] . ")", $column["data_type"]) . " ";
-        $ns .= ($column["required"] == "t") ? "NOT NULL, " : ", ";
+        $ns .= ($column["required"] == "t") ? "NOT NULL;" : ";";
 
-        // array_push($values, $column["column_name"]);
+        $sql = "ALTER TABLE " . $column["table_name"] . " ADD COLUMN " . $ns;
 
-        $new_sql .= $ns;
-
-        $new_sql .= "created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW(), created_user_id INT, updated_user_id INT);";
-
-        array_push($values, "created_at", "updated_at", "created_user_id", "updated_user_id");
-
-        $this->db->query($new_sql);
-
-        $this->db->query("INSERT INTO " . $table_name . "_new (" . implode(", ",$values) . ") SELECT " . implode(", ",$values) . " FROM " . $table_name . ";");
-
-        $this->db->query("DROP TABLE " . $table_name . ";");
-
-        $this->db->query("ALTER TABLE " . $table_name . "_new RENAME TO " . $table_name . ";");
+        $this->db->query($sql);
     }
 
-    public function alterColumn($table_name, $column) {
+    public function alterColumn($column, $old_column)
+    {
+        $changes = [];
 
+        if ($column["column_name"] != $old_column["column_name"]) {
+            $rename = " RENAME COLUMN " . $old_column["column_name"] . " TO " . $column["column_name"];
+            $this->db->query("ALTER TABLE " . $column["table_name"] . $rename);
+        }
+
+        if ($column["data_type"] != $old_column["data_type"] || $column["max_char_length"] != $old_column["max_char_length"]) {
+            $type = "ALTER COLUMN " . $column["column_name"] . " TYPE " . str_replace("()", "(" . $column["max_char_length"] . ")", $column["data_type"]);
+            $this->db->query("ALTER TABLE " . $column["table_name"] . $type);
+        }
+
+        if ($column["required"] != $old_column["required"]) {
+            $required = ($column["required"] == "t") ? "ALTER COLUMN " . $column["column_name"] . " SET NOT NULL" : "ALTER COLUMN " . $column["column_name"] . " DROP NOT NULL";
+            $this->db->query("ALTER TABLE " . $column["table_name"] . $required);
+        }
     }
 
-    public function removeColumn($table_name, $column) {
-
+    public function deleteColumn($column)
+    {
+        $this->db->query("ALTER TABLE " . $column["table_name"] . " DROP COLUMN " . $column["column_name"]);
     }
 
 }

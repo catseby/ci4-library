@@ -103,13 +103,13 @@ class FormController extends BaseController
             if ($name == "table_metadata") {
                 $tableController = new TableModel();
                 $tableController->addTable($post["table_name"]);
-            }
-            else if ($name == "column_metadata") {
+
+            } else if ($name == "column_metadata") {
                 $insertedID = $db->insertID();
                 $inserted_column = $db->query("SELECT * FROM column_metadata WHERE id = " . $insertedID . ";")->getResultArray()[0];
 
                 $tableController = new TableModel();
-                $tableController->addColumn($post["table_name"], $inserted_column);
+                $tableController->addColumn($inserted_column);
             }
         }
 
@@ -240,6 +240,12 @@ class FormController extends BaseController
                 $tableModel = new TableModel();
                 $tableModel->alterTable($beforeValues["table_name"], $post["table_name"]);
             }
+            else if ($name == "column_metadata") {
+                $inserted_column = $db->query("SELECT * FROM column_metadata WHERE id = " . $index . ";")->getResultArray()[0];
+
+                $tableController = new TableModel();
+                $tableController->alterColumn($inserted_column, $beforeValues);
+            }
         }
 
         return json_encode(['id' => $index]);
@@ -262,6 +268,10 @@ class FormController extends BaseController
         if ($name == "table_metadata") {
             $tableModel = new TableModel();
             $tableModel->deleteTable($beforeValues["table_name"]);
+        }
+        else if ($name == "column_metadata") {
+            $tableController = new TableModel();
+            $tableController->deleteColumn($beforeValues);
         }
 
         $data = [
@@ -340,9 +350,9 @@ class FormController extends BaseController
                         'type' => $result['schema_type'],
                         'title' => $result['column_title'],
                         "items" => [
-                            "type" => "string",
-                            'required' => $required
-                        ]
+                                "type" => "string",
+                                'required' => $required
+                            ]
                     ];
                     break;
                 case 'image':
@@ -424,8 +434,8 @@ class FormController extends BaseController
                         'key' => $result['column_name'],
                         'accept' => implode(',', $file_types),
                         'file' => [
-                            "multiple" => true
-                        ]
+                                "multiple" => true
+                            ]
                     ];
                     $extraField = [
                         [
@@ -460,8 +470,8 @@ class FormController extends BaseController
                         'key' => $result['column_name'],
                         'accept' => '.png,.jpg',
                         'image' => [
-                            'multiple' => true
-                        ]
+                                'multiple' => true
+                            ]
                     ];
                     $extraField = [
                         [
@@ -478,9 +488,9 @@ class FormController extends BaseController
                     $field = [
                         'key' => $result['column_name'],
                         'select' => [
-                            'table' => $result['ref_table_name'],
-                            'column' => $result['ref_column_name']
-                        ]
+                                'table' => $result['ref_table_name'],
+                                'column' => $result['ref_column_name']
+                            ]
                     ];
 
                     if ($result['dynamic_fetch'] == 't') {
@@ -493,10 +503,10 @@ class FormController extends BaseController
                     $field = [
                         'key' => $result['column_name'],
                         'select' => [
-                            'multiple' => true,
-                            'table' => $result['ref_table_name'],
-                            'column' => $result['ref_column_name']
-                        ]
+                                'multiple' => true,
+                                'table' => $result['ref_table_name'],
+                                'column' => $result['ref_column_name']
+                            ]
                     ];
                     break;
                 default:
@@ -531,12 +541,12 @@ class FormController extends BaseController
             $fieldset = [
                 "type" => "fieldset",
                 "items" => [
-                    [
-                        "type" => "tabs",
-                        'id' => "navtabs",
-                        "items" => []
+                        [
+                            "type" => "tabs",
+                            'id' => "navtabs",
+                            "items" => []
+                        ]
                     ]
-                ]
             ];
 
             foreach ($tabs as $key => $tab) {
