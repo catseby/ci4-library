@@ -48,8 +48,10 @@ class TableModel
         $this->db->query($sql3);
     }
 
-    public function addColumn($column)
+    public function addColumn($id)
     {
+        $column = $this->db->query("SELECT * FROM column_metadata WHERE id = " . $id . " LIMIT 1;")->getRowArray();
+
         $ns = $column["column_name"] . " ";
         $ns .= str_replace("()", "(" . $column["max_char_length"] . ")", $column["data_type"]) . " ";
         $ns .= ($column["required"] == "t") ? "NOT NULL;" : ";";
@@ -59,8 +61,10 @@ class TableModel
         $this->db->query($sql);
     }
 
-    public function alterColumn($column, $old_column)
+    public function alterColumn($id, $old_column)
     {
+        $column = $this->db->query("SELECT * FROM column_metadata WHERE id = " . $id . " LIMIT 1;")->getRowArray();
+
         $changes = [];
 
         if ($column["column_name"] != $old_column["column_name"]) {

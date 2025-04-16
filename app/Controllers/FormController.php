@@ -17,10 +17,6 @@ class FormController extends BaseController
     public function add($table)
     {
 
-        if ($this->premissionDenied($table, 'add')) {
-            return $this->response->setStatusCode(403)->setBody('Access Denied');
-        }
-
         $formModel = new FormModel();
         $results = $formModel->getForm($table);
 
@@ -40,76 +36,29 @@ class FormController extends BaseController
 
         return view("form", $data);
     }
-    public function create($name)
+    public function create($table_name)
     {
-
-        if ($this->premissionDenied($name, 'add')) {
-            return $this->response->setStatusCode(403)->setBody('Access Denied');
-        }
-
-
         $files = $this->request->getFiles();
         $post = $this->request->getPost();
         $id = null;
 
-        $db = db_connect();
+        $formModel = new FormModel();
 
         if (count($files) > 0) {
-            foreach ($files['files'] as $file) {
-                $filename = $file->getName();
-                $file->move('uploads', $filename);
 
-                $key = key($file);
+            $id = $formModel->insertFiles($table_name, $post, $files);
 
-                $data = [];
-                foreach ($post as $key => $value) {
-                    if ($value == "?filename") {
-                        $data[$key] = $filename;
-                    } else if ($value != 'undefined') {
-                        $data[$key] = $value;
-                    }
-                }
-
-                $user = auth()->user();
-                $userId = $user->id ?? null;
-                $timestamp = date('Y-m-d H:i:s');
-
-                $data['created_user_id'] = $userId;
-                $data['created_at'] = $timestamp;
-
-                $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
-                $db->query($query, array_values($data));
-                $id = $db->insertID();
-            }
         } else {
-            $data = [];
-            foreach ($post as $key => $value) {
-                if ($value != 'undefined') {
-                    $data[$key] = $value;
-                }
-            }
 
-            $user = auth()->user();
-            $userId = $user->id ?? null;
-            $timestamp = date('Y-m-d H:i:s');
+            $id = $formModel->insert($table_name, $post);
 
-            $data['created_user_id'] = $userId;
-            $data['created_at'] = $timestamp;
-
-            $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
-            $query = $db->query($query, array_values($data));
-            $id = $db->insertID();
-
-            if ($name == "table_metadata") {
+            if ($table_name == "table_metadata") {
                 $tableController = new TableModel();
                 $tableController->addTable($post["table_name"]);
 
-            } else if ($name == "column_metadata") {
-                $insertedID = $db->insertID();
-                $inserted_column = $db->query("SELECT * FROM column_metadata WHERE id = " . $insertedID . ";")->getResultArray()[0];
-
+            } else if ($table_name == "column_metadata") {
                 $tableController = new TableModel();
-                $tableController->addColumn($inserted_column);
+                $tableController->addColumn($id);
             }
         }
 
@@ -118,10 +67,6 @@ class FormController extends BaseController
 
     public function edit($table, $index, $column)
     {
-        if ($this->premissionDenied($table, 'edit', $index)) {
-            return $this->response->setStatusCode(403)->setBody('Access Denied');
-        }
-
 
         $formModel = new FormModel();
         $template = $formModel->getForm($table);
@@ -167,15 +112,12 @@ class FormController extends BaseController
 
     public function update($name, $index, $column)
     {
-        if ($this->premissionDenied($name, 'edit', $index)) {
-            return $this->response->setStatusCode(403)->setBody('Access Denied');
-        }
-
 
         $files = $this->request->getFiles();
         $post = $this->request->getPost();
 
         $db = db_connect();
+        $formModel = new FormModel();
 
         if (count($files) > 0) {
             $this->destroy_with_files($name, $index, $column);
@@ -212,39 +154,19 @@ class FormController extends BaseController
 
             }
         } else {
-            $data = [];
-            $keys = [];
-            foreach ($post as $key => $value) {
-                if ($value != 'undefined') {
-                    $data[$key] = $value;
-                    $keys[] = $key . " = ?";
-                }
-            }
 
-            $user = auth()->user();
-            $userId = $user->id ?? null;
-            $timestamp = date('Y-m-d H:i:s');
-
-            $data['updated_user_id'] = $userId;
-            $data['updated_at'] = $timestamp;
-
-            $keys[] = 'updated_user_id = ?';
-            $keys[] = 'updated_at = ?';
-
-            $beforeValues = $db->query("SELECT * FROM public." . $name . " WHERE " . $column . " = " . $index)->getResultArray()[0];
-
-            $sql = 'UPDATE public.' . $name . ' SET ' . implode(',', $keys) . ' WHERE ' . $column . ' = ' . $index;
-            $db->query($sql, array_values($data));
+            $row = $formModel->fetch($name, $column, $index);
 
             if ($name == "table_metadata") {
-                $tableModel = new TableModel();
-                $tableModel->alterTable($beforeValues["table_name"], $post["table_name"]);
-            }
-            else if ($name == "column_metadata") {
-                $inserted_column = $db->query("SELECT * FROM column_metadata WHERE id = " . $index . ";")->getResultArray()[0];
 
-                $tableController = new TableModel();
-                $tableController->alterColumn($inserted_column, $beforeValues);
+                $tableModel = new TableModel();
+                $tableModel->alterTable($row["table_name"], $post["table_name"]);
+
+            } else if ($name == "column_metadata") {
+
+                $tableModel = new TableModel();
+                $tableModel->alterColumn($index, $row);
+
             }
         }
 
@@ -268,8 +190,7 @@ class FormController extends BaseController
         if ($name == "table_metadata") {
             $tableModel = new TableModel();
             $tableModel->deleteTable($beforeValues["table_name"]);
-        }
-        else if ($name == "column_metadata") {
+        } else if ($name == "column_metadata") {
             $tableController = new TableModel();
             $tableController->deleteColumn($beforeValues);
         }
@@ -350,9 +271,9 @@ class FormController extends BaseController
                         'type' => $result['schema_type'],
                         'title' => $result['column_title'],
                         "items" => [
-                                "type" => "string",
-                                'required' => $required
-                            ]
+                            "type" => "string",
+                            'required' => $required
+                        ]
                     ];
                     break;
                 case 'image':
@@ -434,8 +355,8 @@ class FormController extends BaseController
                         'key' => $result['column_name'],
                         'accept' => implode(',', $file_types),
                         'file' => [
-                                "multiple" => true
-                            ]
+                            "multiple" => true
+                        ]
                     ];
                     $extraField = [
                         [
@@ -470,8 +391,8 @@ class FormController extends BaseController
                         'key' => $result['column_name'],
                         'accept' => '.png,.jpg',
                         'image' => [
-                                'multiple' => true
-                            ]
+                            'multiple' => true
+                        ]
                     ];
                     $extraField = [
                         [
@@ -488,9 +409,9 @@ class FormController extends BaseController
                     $field = [
                         'key' => $result['column_name'],
                         'select' => [
-                                'table' => $result['ref_table_name'],
-                                'column' => $result['ref_column_name']
-                            ]
+                            'table' => $result['ref_table_name'],
+                            'column' => $result['ref_column_name']
+                        ]
                     ];
 
                     if ($result['dynamic_fetch'] == 't') {
@@ -503,10 +424,10 @@ class FormController extends BaseController
                     $field = [
                         'key' => $result['column_name'],
                         'select' => [
-                                'multiple' => true,
-                                'table' => $result['ref_table_name'],
-                                'column' => $result['ref_column_name']
-                            ]
+                            'multiple' => true,
+                            'table' => $result['ref_table_name'],
+                            'column' => $result['ref_column_name']
+                        ]
                     ];
                     break;
                 default:
@@ -541,12 +462,12 @@ class FormController extends BaseController
             $fieldset = [
                 "type" => "fieldset",
                 "items" => [
-                        [
-                            "type" => "tabs",
-                            'id' => "navtabs",
-                            "items" => []
-                        ]
+                    [
+                        "type" => "tabs",
+                        'id' => "navtabs",
+                        "items" => []
                     ]
+                ]
             ];
 
             foreach ($tabs as $key => $tab) {

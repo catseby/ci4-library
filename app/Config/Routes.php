@@ -11,10 +11,6 @@ $routes->get('/tables', 'TableController::index');
 
 $routes->post('/tables/(:segment)/fetch', 'TableController::fetch/$1');
 
-// $routes->get('/tables/add', 'TableController::add');
-// $routes->post('/tables/edit/(:segment)', 'TableController::update');
-// $routes->post('tables/delete/(:segment)', 'TableController::destroy');
-
 $routes->get('/forms/(:segment)/add', 'FormController::add/$1');
 $routes->post('/forms/(:segment)/add', 'FormController::create/$1');
 

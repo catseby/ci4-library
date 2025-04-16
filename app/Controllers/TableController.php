@@ -38,7 +38,7 @@ class TableController extends BaseController
 
             $table_limit = intval($table_name_row['maximum_data']);
 
-            $column_sql = "SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY id ASC;";
+            $column_sql = "SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY ordinal_position ASC;";
             $columns_entries = $db->query($column_sql)->getResultArray();
 
             $countArray = $db->query("SELECT count(*) as count FROM public." . $table_name)->getResultArray();
@@ -82,8 +82,10 @@ class TableController extends BaseController
         $asc = $this->request->getPost('order')[0]['dir'] ?? 'asc';
         $columnIndex = $this->request->getPost('order')[0]['column'] ?? 0;
         $columnsArray = $this->request->getPost('columns');
+
         $columns = array_column($columnsArray, 'data');
         $column = $columns[intval($columnIndex)];
+
         $offset = $this->request->getPost('start') ?? 0;
         $limit = $this->request->getPost('length') ?? 'NULL';
         $searchValue = $this->request->getPost('search')['value'] ?? "";
@@ -96,7 +98,7 @@ class TableController extends BaseController
         $table_sql = "SELECT * FROM public.table_metadata WHERE table_name = '" . $table_name . "';";
         $table_entry = $db->query($table_sql)->getResultArray()[0];
 
-        $column_sql = "SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY id ASC;";
+        $column_sql = "SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY ordinal_position ASC;";
         $columns_entries = $db->query($column_sql)->getResultArray();
 
         $alias_words = [];
@@ -190,7 +192,6 @@ class TableController extends BaseController
             }
         }
 
-        // $data['tables'][$table_name]['table'] = $table_name;
         $data["data"] = $values;
         $data["recordsTotal"] = count($values);
         $data['draw'] = intval($draw);
@@ -198,9 +199,6 @@ class TableController extends BaseController
         $count = $db->query("SELECT count(*) as count FROM public." . $table_name)->getResultArray();
 
         $data["recordsFiltered"] = $count[0]["count"];
-
-        // $data['tables'] = json_encode($data['tables']);
-
 
         return $this->response->setJSON($data);
     }
