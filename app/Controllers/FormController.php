@@ -176,10 +176,6 @@ class FormController extends BaseController
     public function destroy($name, $index, $column)
     {
 
-        if ($this->premissionDenied($name, 'edit', $index)) {
-            return $this->response->setStatusCode(403)->setBody('Access Denied');
-        }
-
         $db = db_connect();
 
         $beforeValues = $db->query("SELECT * FROM public." . $name . " WHERE " . $column . " = " . $index)->getResultArray()[0];
@@ -210,11 +206,6 @@ class FormController extends BaseController
 
     public function destroy_with_files($name, $index, $column)
     {
-
-        if ($this->premissionDenied($name, 'edit')) {
-            return $this->response->setStatusCode(403)->setBody('Access Denied');
-        }
-
         $db = db_connect();
 
         $sql1 = "SELECT column_name " .
@@ -585,36 +576,5 @@ class FormController extends BaseController
             }
         }
         return $joins;
-    }
-
-    private function premissionDenied($table_name, $type, $index = -1)
-    {
-        $db = db_connect();
-        $table = $db->query("SELECT * FROM public.table_metadata WHERE table_name = '" . $table_name . "';")->getResultArray()[0];
-
-        $filter = new FormFilter();
-
-        $auth = service('auth');
-        $user = $auth->user();
-
-        $premissions = $filter->getPremissions($table_name, $user);
-
-        if ($premissions[$type]) {
-            return false;
-        }
-
-        if ($index != -1) {
-            $row = $db->query("SELECT created_user_id FROM public." . $table_name . " WHERE id = " . $index . ";")->getResultArray()[0];
-
-            if ($premissions["show_created"] && $type == "show" && $user->id == $row["created_user_id"]) {
-                return false;
-                // } else if ($premissions["add_created"] && $type == "add" && $user->id == $row["created_user_id"]) {
-                //     return false;
-            } else if ($premissions["edit_created"] && $type == "edit" && $user->id == $row["created_user_id"]) {
-                return false;
-            }
-        }
-
-        return true; // User doesn't have permission
     }
 }
