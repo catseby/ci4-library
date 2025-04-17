@@ -31,7 +31,7 @@ class FormFilter implements FilterInterface
         $uri = $request->getUri();
         $table_name = $uri->getSegment(2);
 
-        log_message("debug",$table_name);
+        log_message("debug", $table_name);
         $type = $uri->getSegment(3);
 
         $premissions = $this->getPremissions($table_name, $user);
@@ -92,7 +92,32 @@ class FormFilter implements FilterInterface
 
         return false;
     }
-    
+
+    public function getAllowedColumns($table_name)
+    {
+        $db = db_connect();
+
+        $column_sql = "SELECT column_name, required FROM public.form_metadata WHERE table_name = '" . $table_name . "' ORDER BY order_position ASC;";
+        $columns_entries = $db->query($column_sql)->getResultArray();
+
+        $auth = service('auth');
+        $user = $auth->user();
+
+        $filter = new FormFilter();
+
+        $allowed = [];
+
+        foreach ($columns_entries as $j => $column_entry) {
+            $column_metadata = $db->query("SELECT required_permissions FROM public.column_metadata WHERE column_name = '" . $column_entry["column_name"] . "';")->getResultArray()[0];
+
+            if ($column_entry["required"] == "t" || !$filter->columnPremissionDenied($column_metadata["required_permissions"], $user)) {
+                array_push($allowed, $column_entry['column_name']);
+            }
+        }
+
+        return $allowed;
+    }
+
     /**
      * Allows After filters to inspect and modify the response
      * object as needed. This method does not allow any way

@@ -83,9 +83,9 @@ class TableModel
         }
     }
 
-    public function deleteColumn($column)
+    public function deleteColumn($old_column)
     {
-        $this->db->query("ALTER TABLE " . $column["table_name"] . " DROP COLUMN " . $column["column_name"]);
+        $this->db->query("ALTER TABLE " . $old_column["table_name"] . " DROP COLUMN " . $old_column["column_name"]);
     }
 
 }

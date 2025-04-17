@@ -20,7 +20,9 @@ class FormController extends BaseController
         $formModel = new FormModel();
         $results = $formModel->getForm($table);
 
-        $allowed_columns = $this->getAllowedColumns($table);
+        $formFilter = new FormFilter();
+        $allowed_columns = $formFilter->getAllowedColumns($table);
+
         $schema = $this->getSchema($table, $results, $allowed_columns);
         $form = $this->getForm($results, "Create", $allowed_columns);
         $links = $this->getLinks($results, "add", $allowed_columns);
@@ -71,7 +73,9 @@ class FormController extends BaseController
         $formModel = new FormModel();
         $template = $formModel->getForm($table);
 
-        $allowed_columns = $this->getAllowedColumns($table);
+        $formFilter = new FormFilter();
+        $allowed_columns = $formFilter->getAllowedColumns($table);
+        
         $schema = $this->getSchema($table, $template, $allowed_columns);
         $form = $this->getForm($template, "Save", $allowed_columns);
         $links = $this->getLinks($template, "edit", $allowed_columns, $index);
@@ -116,43 +120,13 @@ class FormController extends BaseController
         $files = $this->request->getFiles();
         $post = $this->request->getPost();
 
-        $db = db_connect();
         $formModel = new FormModel();
 
         if (count($files) > 0) {
-            $this->destroy_with_files($name, $index, $column);
+            $formModel->deleteFiles($name, $column, $index);
 
-            foreach ($files['files'] as $file) {
-                $filename = $file->getName();
-                $file->move('uploads', $filename);
+            $formModel->updateFiles($name, $post, $files);
 
-                $key = key($file);
-
-                $data = [];
-                $keys = [];
-                foreach ($post as $key => $value) {
-                    if ($value == "?filename") {
-                        $data[$key] = $filename;
-                    } else if ($value != 'undefined') {
-                        $data[$key] = $value;
-                    }
-                    $keys[] = $key . " = ?";
-                }
-
-                $user = auth()->user();
-                $userId = $user->id ?? null;
-                $timestamp = date('Y-m-d H:i:s');
-
-                $data['updated_user_id'] = $userId;
-                $data['updated_at'] = $timestamp;
-
-                $keys[] = 'updated_user_id = ?';
-                $keys[] = 'updated_at = ?';
-
-                $query = 'INSERT INTO public.' . $name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(', ', array_fill(0, count($data), '?')) . ');';
-                $db->query($query, array_values($data));
-
-            }
         } else {
 
             $row = $formModel->fetch($name, $column, $index);
@@ -175,20 +149,22 @@ class FormController extends BaseController
 
     public function destroy($name, $index, $column)
     {
+        $formModel = new FormModel();
 
-        $db = db_connect();
+        $row = $formModel->fetch($name, $column, $index);
 
-        $beforeValues = $db->query("SELECT * FROM public." . $name . " WHERE " . $column . " = " . $index)->getResultArray()[0];
-
-        $query = 'DELETE FROM public.' . $name . ' WHERE ' . $column . ' = ' . $index;
-        $db->query($query);
+        $formModel->delete($name, $column, $index);
 
         if ($name == "table_metadata") {
+
             $tableModel = new TableModel();
-            $tableModel->deleteTable($beforeValues["table_name"]);
+            $tableModel->deleteTable($row["table_name"]);
+
         } else if ($name == "column_metadata") {
-            $tableController = new TableModel();
-            $tableController->deleteColumn($beforeValues);
+
+            $tableModel = new TableModel();
+            $tableModel->deleteColumn($row);
+
         }
 
         $data = [
@@ -201,36 +177,6 @@ class FormController extends BaseController
         ];
 
         return view("form", $data);
-
-    }
-
-    public function destroy_with_files($name, $index, $column)
-    {
-        $db = db_connect();
-
-        $sql1 = "SELECT column_name " .
-            "FROM information_schema.columns " .
-            "WHERE table_schema = 'public' " .
-            "AND table_name = '" . $name . "' " .
-            "AND domain_name IN ('image') " .
-            "ORDER BY table_name, ordinal_position;";
-
-        $sql2 = 'SELECT * FROM public.' . $name . ' WHERE ' . $column . ' = ' . $index;
-
-        $sql3 = 'DELETE FROM public.' . $name . ' WHERE ' . $column . ' = ' . $index;
-
-        $valid_column_arr = $db->query($sql1)->getResultArray();
-        $results = $db->query($sql2)->getResultArray();
-
-
-        foreach ($valid_column_arr as $valid_column_key => $valid_column) {
-            $column_name = $valid_column['column_name'];
-            foreach ($results as $key => $result) {
-                unlink("./uploads/" . $result[$column_name]);
-            }
-        }
-
-        $db->query($sql3);
     }
 
     private function getSchema($table, $results, $allowed_columns)
@@ -486,31 +432,6 @@ class FormController extends BaseController
         );
 
         return $form;
-    }
-
-    private function getAllowedColumns($table_name)
-    {
-        $db = db_connect();
-
-        $column_sql = "SELECT column_name, required FROM public.form_metadata WHERE table_name = '" . $table_name . "' ORDER BY order_position ASC;";
-        $columns_entries = $db->query($column_sql)->getResultArray();
-
-        $auth = service('auth');
-        $user = $auth->user();
-
-        $filter = new FormFilter();
-
-        $allowed = [];
-
-        foreach ($columns_entries as $j => $column_entry) {
-            $column_metadata = $db->query("SELECT required_permissions FROM public.column_metadata WHERE column_name = '" . $column_entry["column_name"] . "';")->getResultArray()[0];
-
-            if ($column_entry["required"] == "t" || !$filter->columnPremissionDenied($column_metadata["required_permissions"], $user)) {
-                array_push($allowed, $column_entry['column_name']);
-            }
-        }
-
-        return $allowed;
     }
 
     private function getLinks($results, $type, $allowed_columns, $id = null)
