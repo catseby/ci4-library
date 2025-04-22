@@ -12,6 +12,32 @@ class TableModel
         $this->db = db_connect();
     }
 
+    public function getTables()
+    {
+        return $this->db->query("SELECT * FROM public.table_metadata;")->getResultArray();
+    }
+
+    public function getColumns($table_name)
+    {
+        return $this->db->query("SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "';")->getResultArray();
+    }
+
+    public function rowCount($table_name)
+    {
+        $count = $this->db->query("SELECT count(*) as count FROM public." . $table_name)->getRowArray();
+        return intval($count["count"]);
+    }
+
+    public function fetch($table_name)
+    {
+        return $this->db->query("SELECT * FROM public.table_metadata WHERE table_name = '" . $table_name . "' LIMIT 1;")->getRowArray();
+    }
+
+    public function getValues($sql)
+    {
+        return $this->db->query($sql)->getResultArray();
+    }
+
     public function addTable($table_name)
     {
         $sql = "CREATE TABLE IF NOT EXISTS " . $table_name . " (

@@ -6,7 +6,7 @@ use App\Controllers\BaseController;
 use App\Filters\FormFilter;
 use App\Models\FormTemplateModel;
 use CodeIgniter\HTTP\ResponseInterface;
-use App\Models\FormModel;
+use App\Models\TableModel;
 use CodeIgniter\Shield\Authentication\Auth;
 use CodeIgniter\Shield\Exceptions\AccessDeniedException;
 
@@ -14,21 +14,18 @@ class TableController extends BaseController
 {
     public function index()
     {
-        $db = db_connect();
-
-        $table_sql = 'SELECT * FROM public.table_metadata;';
-        $table_names = $db->query($table_sql)->getResultArray();
-
+        $tableModel = new TableModel();
         $filter = new FormFilter();
 
         $auth = service('auth');
         $user = $auth->user();
 
         $data = [];
+        $tables = $tableModel->getTables();
 
-        foreach ($table_names as $i => $table_name_row) {
+        foreach ($tables as $i => $table) {
 
-            $table_name = $table_name_row['table_name'];
+            $table_name = $table['table_name'];
 
             $premissions = $filter->getPremissions($table_name, $user);
 
@@ -36,20 +33,17 @@ class TableController extends BaseController
                 continue;
             }
 
-            $table_limit = intval($table_name_row['maximum_data']);
+            $table_limit = intval($table['maximum_data']);
 
-            $column_sql = "SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY ordinal_position ASC;";
-            $columns_entries = $db->query($column_sql)->getResultArray();
-
-            $countArray = $db->query("SELECT count(*) as count FROM public." . $table_name)->getResultArray();
-            $count = intval($countArray[0]["count"]);
+            $columns = $tableModel->getColumns($table_name);
+            $count = $tableModel->rowCount($table_name);
 
             $column_names = [["data" => "id", "title" => "id"]];
-            foreach ($columns_entries as $j => $column_entry) {
-                if ($filter->columnPremissionDenied($column_entry["required_permissions"], $user)) {
+            foreach ($columns as $j => $column) {
+                if ($filter->columnPremissionDenied($column["required_permissions"], $user)) {
                     continue;
                 }
-                array_push($column_names, ["data" => $column_entry['column_name'], "title" => $column_entry['column_name']]);
+                array_push($column_names, ["data" => $column['column_name'], "title" => $column['column_name']]);
             }
 
             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
@@ -70,21 +64,20 @@ class TableController extends BaseController
         return view('datatables', $data);
     }
 
-    public function fetch($table)
+    public function fetch($table_name)
     {
+        $tableModel = new TableModel();
         $filter = new FormFilter();
 
         $auth = service('auth');
         $user = $auth->user();
-
-        $db = db_connect();
 
         $asc = $this->request->getPost('order')[0]['dir'] ?? 'asc';
         $columnIndex = $this->request->getPost('order')[0]['column'] ?? 0;
         $columnsArray = $this->request->getPost('columns');
 
         $columns = array_column($columnsArray, 'data');
-        $column = $columns[intval($columnIndex)];
+        $column_name = $columns[intval($columnIndex)];
 
         $offset = $this->request->getPost('start') ?? 0;
         $limit = $this->request->getPost('length') ?? 'NULL';
@@ -93,13 +86,9 @@ class TableController extends BaseController
 
         $data = [];
 
-        $table_name = $table;
+        // $table = $tableModel->fetch($table_name);
 
-        $table_sql = "SELECT * FROM public.table_metadata WHERE table_name = '" . $table_name . "';";
-        $table_entry = $db->query($table_sql)->getResultArray()[0];
-
-        $column_sql = "SELECT * FROM public.column_metadata WHERE table_name = '" . $table_name . "' ORDER BY ordinal_position ASC;";
-        $columns_entries = $db->query($column_sql)->getResultArray();
+        $columns = $tableModel->getColumns($table_name);
 
         $alias_words = [];
 
@@ -117,46 +106,46 @@ class TableController extends BaseController
         array_push($select_values, $alias . ".id");
         array_push($select_groups, $alias . ".id");
 
-        foreach ($columns_entries as $j => $column_entry) {
+        foreach ($columns as $j => $column) {
 
-            if ($filter->columnPremissionDenied($column_entry["required_permissions"], $user)) {
+            if ($filter->columnPremissionDenied($column["required_permissions"], $user)) {
                 continue;
             }
 
-            if ($column_entry['foreign_key'] != null) {
+            if ($column['foreign_key'] != null) {
                 $sub_alias = '';
                 $sub_alias_words = [];
-                $sub_alias_words = explode('_', $column_entry["foreign_table"]);
+                $sub_alias_words = explode('_', $column["foreign_table"]);
 
                 foreach ($sub_alias_words as $word) {
                     $sub_alias .= strtoupper($word[0]);
                 }
 
-                $v = "JSON_AGG(" . $sub_alias . "." . $column_entry['foreign_column'] . ") AS " . $column_entry['column_name'];
+                $v = "JSON_AGG(" . $sub_alias . "." . $column['foreign_column'] . ") AS " . $column['column_name'];
                 array_push($select_values, $v);
 
-                $join = 'LEFT JOIN ' . $column_entry['foreign_table'] . ' ' . $sub_alias . ' ON ' . $alias . '.id = ' . $sub_alias . '.' . $column_entry['foreign_key'];
+                $join = 'LEFT JOIN ' . $column['foreign_table'] . ' ' . $sub_alias . ' ON ' . $alias . '.id = ' . $sub_alias . '.' . $column['foreign_key'];
 
                 if (in_array($join, $select_joins) == false) {
                     array_push($select_joins, $join);
                 }
 
-            } else if ($column_entry['foreign_table']) {
+            } else if ($column['foreign_table']) {
 
                 $sub_alias = '';
                 $sub_alias_words = [];
-                $sub_alias_words = explode('_', $column_entry["foreign_table"]);
+                $sub_alias_words = explode('_', $column["foreign_table"]);
 
                 foreach ($sub_alias_words as $word) {
                     $sub_alias .= strtoupper($word[0]);
                 }
 
-                $v = "JSON_AGG(" . $sub_alias . "." . $column_entry['foreign_column'] . ") AS " . $column_entry['column_name'];
+                $v = "JSON_AGG(" . $sub_alias . "." . $column['foreign_column'] . ") AS " . $column['column_name'];
                 array_push($select_values, $v);
 
-                $join1 = "LEFT JOIN LATERAL jsonb_array_elements_text(" . $alias . "." . $column_entry["column_name"] . ") AS " . $column_entry["column_name"] . "_id ON TRUE";
+                $join1 = "LEFT JOIN LATERAL jsonb_array_elements_text(" . $alias . "." . $column["column_name"] . ") AS " . $column["column_name"] . "_id ON TRUE";
 
-                $join2 = 'LEFT JOIN ' . $column_entry['foreign_table'] . ' ' . $sub_alias . ' ON ' . $sub_alias . '.id = ' . $column_entry["column_name"] . "_id::INTEGER";
+                $join2 = 'LEFT JOIN ' . $column['foreign_table'] . ' ' . $sub_alias . ' ON ' . $sub_alias . '.id = ' . $column["column_name"] . "_id::INTEGER";
 
                 if (in_array($join1, $select_joins) == false) {
                     array_push($select_joins, $join1);
@@ -168,18 +157,17 @@ class TableController extends BaseController
 
             } else {
 
-                array_push($select_values, $alias . "." . $column_entry['column_name']);
-                array_push($select_groups, $alias . "." . $column_entry['column_name']);
+                array_push($select_values, $alias . "." . $column['column_name']);
+                array_push($select_groups, $alias . "." . $column['column_name']);
             }
         }
 
         $asc = ($asc === 'asc') ? 'ASC' : 'DESC';
-        ;
 
         $searchSql = " WHERE to_jsonb(" . $alias . ")::text ILIKE '%" . $searchValue . "%'";
 
-        $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . $searchSql . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column . ' ' . $asc . ' LIMIT ' . $limit . ' OFFSET ' . $offset . ';';
-        $values = $db->query($sql)->getResultArray();
+        $sql = 'SELECT ' . implode(", ", $select_values) . ' FROM ' . $table_name . ' ' . $alias . ' ' . implode(" ", $select_joins) . $searchSql . ' GROUP BY ' . implode(", ", $select_groups) . ' ORDER BY ' . $alias . '.' . $column_name . ' ' . $asc . ' LIMIT ' . $limit . ' OFFSET ' . $offset . ';';
+        $values = $tableModel->getValues($sql);
 
         $values = $this->premissionFilter($values, $filter->getPremissions($table_name, $user), $user, $table_name);
 
@@ -196,9 +184,7 @@ class TableController extends BaseController
         $data["recordsTotal"] = count($values);
         $data['draw'] = intval($draw);
 
-        $count = $db->query("SELECT count(*) as count FROM public." . $table_name)->getResultArray();
-
-        $data["recordsFiltered"] = $count[0]["count"];
+        $data["recordsFiltered"] = $tableModel->rowCount($table_name);
 
         return $this->response->setJSON($data);
     }
