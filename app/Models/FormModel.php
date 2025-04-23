@@ -16,7 +16,7 @@ class FormModel
 
     public function getForm($table_name)
     {
-        return $this->db->query("SELECT * FROM " . $table_name . " ORDER BY order_position ASC");
+        return $this->db->query("SELECT * FROM form_metadata WHERE table_name =  '" . $table_name . "' ORDER BY order_position ASC")->getResultArray();
     }
 
     public function fetch($table_name, $column_name, $index)
