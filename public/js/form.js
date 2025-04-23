@@ -273,7 +273,6 @@ function submit(i, values, extra, fk) {
   }
 
   let save_url = "http://localhost:8080/forms/" + link.table + "/" + link.type;
-  console.log(link);
   if (link.index != null)
     save_url =
       "http://localhost:8080/forms/" +
@@ -297,7 +296,6 @@ function submit(i, values, extra, fk) {
         if (link.type != "add") {
           x = "/" + links[i + 1].param;
         }
-        console.log(x);
         submit(i + 1, values, x, resp.id);
       }
       console.log(resp);
@@ -309,9 +307,9 @@ function submit(i, values, extra, fk) {
     },
   });
 }
+
 // Pirms formas noformatēšana=================
 //====================================
-
 for (let i = 0; i < form.length; i++) {
   let f = form[i];
 
@@ -358,7 +356,6 @@ $("#test-form").jsonForm({
 
 // ģenerētās formas papildināšana ================
 // =====================================
-
 for (let i = 0; i < multi_keys.length; i++) {
   $('[name="' + multi_keys[i] + '"]').attr("multiple", "multiple");
 }
@@ -376,5 +373,4 @@ for (let i = 0; i < form.length; i++) {
   } else {
     form_configure(f);
   }
-  // console.log(file_arr);
 }

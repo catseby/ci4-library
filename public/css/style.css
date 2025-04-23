@@ -4,55 +4,6 @@ body {
     margin: 0px;
 }
 
-.main {
-    width: 70%;
-    margin-left: 15%;
-}
-
-.filter-div{
-    width: 50%;
-}
-
-.filter-div select{
-    width: 100%;
-}
-
-.tag-filter button {
-    opacity: 0.5;
-}
-
-
-.tag-filter .tag-toggled {
-    opacity: 1;
-}
-
-.popup-container {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.2);/* Green background with 30% opacity */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.popup-container .popup-box{
-    border: 1px solid black;
-    opacity: 1;
-    width: 50%;
-    background-color: white;
-    padding-bottom: 2%;
-}
-
-.popup-container .popup-box .popup-box-contents{
-    width: 80%;
-    padding-left: 10%;
-}
-
-.hidden {
-    display: none;
-}
-
 .x-button {
     float: right;
     background: none;
@@ -94,11 +45,19 @@ background-color: #dddddd;
 }
 
 .form-container-div {
+    margin: 0px 30%;
+    padding: 20px 40px;
     padding-bottom: 32px;
+    align-items: center;
+    background-color: white;
 }
 
 .form-container-div form {
     width: 480px;
+}
+
+.form-container-div form input[type="submit"]{
+    width: 100%;
 }
 
 .pagination {
@@ -124,5 +83,4 @@ background-color: #dddddd;
 }
 .page-button:active {
     color: #003f7f;
-}
 }
