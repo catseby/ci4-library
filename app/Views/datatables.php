@@ -23,6 +23,7 @@
 
 <body>
     <div>
+        <p><?php echo $message; ?></p>
         <form action="" id="form-tables"></form>
         <div id="tables-container"></div>
     </div>

@@ -298,12 +298,18 @@ function submit(i, values, extra, fk) {
         }
         submit(i + 1, values, x, resp.id);
       }
-      console.log(resp);
+      let mesg = document.getElementById("message");
+      mesg.innerHTML = resp.message;
+      mesg.style.color = "green";
     },
     error: function (jqXHR, textStatus, errorThrown) {
       console.error(jqXHR);
       console.error(textStatus);
       console.error(errorThrown);
+
+      let mesg = document.getElementById("message");
+      mesg.innerHTML = "Someting went wrong.";
+      mesg.style.color = "red";
     },
   });
 }

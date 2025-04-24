@@ -8,8 +8,10 @@ use CodeIgniter\Router\RouteCollection;
 
 
 $routes->get('/tables', 'TableController::index');
-
 $routes->post('/tables/(:segment)/fetch', 'TableController::fetch/$1');
+
+$routes->get('/forms/(:segment)/fetch/(:segment)', 'FormController::fetch/$1/$2');
+$routes->get('/forms/(:segment)/fetch/(:segment)/(:segment)/(:segment)', 'FormController::fetchWhere/$1/$2/$3/$4');
 
 $routes->get('/forms/(:segment)/add', 'FormController::add/$1');
 $routes->post('/forms/(:segment)/add', 'FormController::create/$1');

@@ -60,6 +60,7 @@ class TableController extends BaseController
         }
 
         $data['tables'] = json_encode($data['tables']);
+        $data['message'] = "";
 
         return view('datatables', $data);
     }

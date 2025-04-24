@@ -26,20 +26,26 @@ class FormFilter implements FilterInterface
     public function before(RequestInterface $request, $arguments = null)
     {
         $auth = service('auth');
+
+        if (!$auth->loggedIn()) {
+            return redirect()->to('/login')->with('warning', 'Please login first.');
+        }
+
         $user = $auth->user();
-
         $uri = $request->getUri();
-        $table_name = $uri->getSegment(2);
 
-        log_message("debug", $table_name);
-        $type = $uri->getSegment(3);
+        if ($uri->getTotalSegments() >= 3) {
+            $table_name = $uri->getSegment(2);
 
-        $premissions = $this->getPremissions($table_name, $user);
+            $type = $uri->getSegment(3);
 
-        if (!$premissions[$type]) {
-            return service('response')
-                ->setStatusCode(403) // Forbidden
-                ->setBody('Access Denied Filter');
+            $premissions = $this->getPremissions($table_name, $user);
+
+            if (!$premissions[$type]) {
+                return service('response')
+                    ->setStatusCode(403) // Forbidden
+                    ->setBody('Access Denied Filter');
+            }
         }
     }
 

@@ -14,6 +14,24 @@ use CodeIgniter\Shield\Exceptions\AccessDeniedException;
 
 class FormController extends BaseController
 {
+    public function fetch($table, $column)
+    {
+        $db = db_connect();
+
+        $result = $db->query('SELECT id, ' . $column . ' AS item FROM public.' . $table . ';')->getResultArray();
+
+        return json_encode($result);
+    }
+
+    public function fetchWhere($table, $column, $target, $value)
+    {
+        $db = db_connect();
+
+        $result = $db->query('SELECT id, ' . $column . ' AS item FROM public.' . $table . ' WHERE ' . $target . " = '" . $value . "';")->getResultArray();
+
+        return json_encode($result);
+    }
+
     public function add($table)
     {
 
@@ -29,6 +47,7 @@ class FormController extends BaseController
 
         $data = [
             'name' => $table,
+            'message' => "",
             'schema' => json_encode($schema),
             'form' => json_encode($form),
             'links' => json_encode($links),
@@ -64,7 +83,7 @@ class FormController extends BaseController
             }
         }
 
-        return json_encode(['id' => $id]);
+        return json_encode(['id' => $id, 'message' => "Entry created succsessfully."]);
     }
 
     public function edit($table, $index, $column)
@@ -75,7 +94,7 @@ class FormController extends BaseController
 
         $formFilter = new FormFilter();
         $allowed_columns = $formFilter->getAllowedColumns($table);
-        
+
         $schema = $this->getSchema($table, $template, $allowed_columns);
         $form = $this->getForm($template, "Save", $allowed_columns);
         $links = $this->getLinks($template, "edit", $allowed_columns, $index);
@@ -103,6 +122,7 @@ class FormController extends BaseController
 
         $data = [
             'name' => $table,
+            'message' => "",
             'schema' => json_encode($schema),
             'form' => json_encode($form),
             'links' => json_encode($links),
@@ -143,8 +163,7 @@ class FormController extends BaseController
 
             }
         }
-
-        return json_encode(['id' => $index]);
+        return json_encode(['id' => $index, 'message' => "Entry updated succsessfully."]);
     }
 
     public function destroy($name, $index, $column)
@@ -168,7 +187,8 @@ class FormController extends BaseController
         }
 
         $data = [
-            'name' => "Entry from " . $name . ' was deleted.',
+            'name' => $name,
+            'message' => "Entry was deleted succsessfully.",
             'schema' => '{}',
             'form' => '{}',
             'links' => '{}',

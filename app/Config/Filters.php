@@ -34,7 +34,6 @@ class Filters extends BaseFilters
         'forcehttps' => ForceHTTPS::class,
         'pagecache' => PageCache::class,
         'performance' => PerformanceMetrics::class,
-
         'forms' => \App\Filters\FormFilter::class,
     ];
 
@@ -109,8 +108,7 @@ class Filters extends BaseFilters
      */
     public array $filters = [
         'forms' => [
-            'before' => ['forms/*'],
-            'except' => ['forms/add', 'forms/edit', 'forms/delete']
+            'before' => ['forms/*', "tables", "tables/*"]
         ]
     ];
 }

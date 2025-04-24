@@ -21,7 +21,8 @@
 <body>
     <div class="form-container-div">
         <h1 style="text-transform:capitalize"><?= esc($name) ?></h1>
-        <form action="" id="test-form"></form>
+        <form action="" id="test-form"></form><br>
+        <p id="message" style="color: green;"><?= esc($message) ?></p>
     </div>
     <script>
         let schema = <?php echo $schema; ?>;
