@@ -14,6 +14,33 @@ class FormModel
         $this->db = db_connect();
     }
 
+    private function getFileByName($files, $filename)
+    {
+        foreach ($files as $inputName => $fileGroup) {
+            foreach ($fileGroup as $file) {
+                if ($file->getName() === $filename) {
+                    return $file; // Return the file if found
+                }
+            }
+        }
+        return null; // Return null if file not found
+    }
+
+    private function setFiles($files, $filenames, $old_filenames = null)
+    {
+        if ($old_filenames != null) {
+            foreach ($old_filenames as $old_file) {
+                unlink("./uploads/" . $old_file);
+            }
+        }
+
+        foreach ($filenames as $filename) {
+            $file = $this->getFileByName($files, $filename);
+            $file->move('uploads', $file->getName());
+        }
+    }
+
+
     public function getForm($table_name)
     {
         return $this->db->query("SELECT * FROM form_metadata WHERE table_name =  '" . $table_name . "' ORDER BY order_position ASC")->getResultArray();
@@ -31,6 +58,9 @@ class FormModel
 
         foreach ($raw_data as $row) {
             if ($row["value"] != 'undefined') {
+                if (isset($row["files"]) && $row["files"] == true) {
+                    $this->setFiles($files, $row["files"]);
+                }
                 $data[$row["key"]] = $row["value"];
             }
         }
@@ -68,35 +98,35 @@ class FormModel
     //     return $this->db->insertID();
     // }
 
-    public function insertFiles($table_name, $post, $files)
-    {
-        foreach ($files['files'] as $file) {
-            $filename = $file->getName();
-            $file->move('uploads', $filename);
+    // public function insertFiles($table_name, $post, $files)
+    // {
+    //     foreach ($files['files'] as $file) {
+    //         $filename = $file->getName();
+    //         $file->move('uploads', $filename);
 
-            $key = key($file);
+    //         $key = key($file);
 
-            $data = [];
-            foreach ($post as $key => $value) {
-                if ($value == "?filename") {
-                    $data[$key] = $filename;
-                } else if ($value != 'undefined') {
-                    $data[$key] = $value;
-                }
-            }
+    //         $data = [];
+    //         foreach ($post as $key => $value) {
+    //             if ($value == "?filename") {
+    //                 $data[$key] = $filename;
+    //             } else if ($value != 'undefined') {
+    //                 $data[$key] = $value;
+    //             }
+    //         }
 
-            $user = auth()->user();
-            $userId = $user->id ?? null;
-            $timestamp = date('Y-m-d H:i:s');
+    //         $user = auth()->user();
+    //         $userId = $user->id ?? null;
+    //         $timestamp = date('Y-m-d H:i:s');
 
-            $data['created_user_id'] = $userId;
-            $data['created_at'] = $timestamp;
+    //         $data['created_user_id'] = $userId;
+    //         $data['created_at'] = $timestamp;
 
-            $query = 'INSERT INTO public.' . $table_name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
-            $this->db->query($query, array_values($data));
-            return $this->db->insertID();
-        }
-    }
+    //         $query = 'INSERT INTO public.' . $table_name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
+    //         $this->db->query($query, array_values($data));
+    //         return $this->db->insertID();
+    //     }
+    // }
 
     public function update($table_name, $column_name, $index, $post)
     {
