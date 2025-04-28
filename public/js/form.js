@@ -230,123 +230,137 @@ function form_prepare(f) {
   }
 }
 
-function submit(i, values, extra, fk) {
-  let link = links[i];
-
+function submit(values, extra) {
+  let post = [];
   let formData = new FormData();
 
-  if (fk != null) {
-    formData.append(link.param, fk);
-  }
+  for (let i = 0; i < links.length; i++) {
+    let link = links[i];
 
-  for (let i = 0; i < Object.keys(schema.properties).length; i++) {
-    let key = Object.keys(schema.properties)[i];
+    let table = {
+      name: link.table,
+      data: [],
+    };
 
-    if (link.keys.includes(key)) {
-      if (schema.properties[key].type == "file") {
-        for (let j = 0; j < file_arr.length; j++) {
-          formData.append("files[]", file_arr[j]);
+    for (let i = 0; i < Object.keys(schema.properties).length; i++) {
+      let key = Object.keys(schema.properties)[i];
 
-          formData.append(key, "?filename");
-        }
-      } else if (schema.properties[key].type == "select") {
-        let mult = $('[name="' + key + '"]').attr("multiple");
-
-        if (mult != undefined) {
-          if ($('[name="' + key + '"]').val() != null) {
-            let select_value = $('[name="' + key + '"]')
-              .val()
-              .map(Number);
-            formData.append(key, JSON.stringify(select_value));
+      if (link.keys.includes(key)) {
+        let segment = { key: key, value: [], files: true };
+        if (schema.properties[key].type == "file") {
+          for (let j = 0; j < file_arr.length; j++) {
+            formData.append("files[]", file_arr[j]);
+            segment.value.push(file_arr[j].name);
           }
+          table.data.push(segment);
+        } else if (schema.properties[key].type == "select") {
+          let mult = $('[name="' + key + '"]').attr("multiple");
+
+          if (mult != undefined) {
+            if ($('[name="' + key + '"]').val() != null) {
+              let select_value = $('[name="' + key + '"]')
+                .val()
+                .map(Number);
+              table.data.push({
+                key: key,
+                value: JSON.stringify(select_value),
+              });
+            }
+          } else {
+            let select_value = $('[name="' + key + '"] option:selected').text();
+            table.data.push({ key: key, value: select_value });
+          }
+        } else if (schema.properties[key].type == "array") {
+          table.data.push({ key: key, value: JSON.stringify(values[key]) });
         } else {
-          let select_value = $('[name="' + key + '"] option:selected').text();
-          formData.append(key, select_value);
+          table.data.push({ key: key, value: values[key] });
         }
-      } else if (schema.properties[key].type == "array") {
-        formData.append(key, JSON.stringify(values[key]));
-      } else {
-        let value = values[key];
-        formData.append(key, value);
       }
     }
+
+    post.push(table);
   }
 
-  let save_url = "http://localhost:8080/forms/" + link.table + "/" + link.type;
-  if (link.index != null)
-    save_url =
-      "http://localhost:8080/forms/" +
-      link.table +
-      "/" +
-      link.type +
-      "/" +
-      link.index +
-      extra;
+  console.log(post);
+  // if (fk != null) {
+  //   formData.append(link.param, fk);
+  // }
 
-  $.ajax({
-    url: save_url,
-    type: "post",
-    data: formData,
-    processData: false,
-    contentType: false,
-    success: function (response) {
-      let resp = JSON.parse(response);
-      if (links.length - 1 > i) {
-        let x = "";
-        if (link.type != "add") {
-          x = "/" + links[i + 1].param;
-        }
-        submit(i + 1, values, x, resp.id);
-      }
-      let mesg = document.getElementById("message");
-      mesg.innerHTML = resp.message;
-      mesg.style.color = "green";
-    },
-    error: function (jqXHR, textStatus, errorThrown) {
-      console.error(jqXHR);
-      console.error(textStatus);
-      console.error(errorThrown);
+  //   let save_url = "http://localhost:8080/forms/" + link.table + "/" + link.type;
+  //   if (link.index != null)
+  //     save_url =
+  //       "http://localhost:8080/forms/" +
+  //       link.table +
+  //       "/" +
+  //       link.type +
+  //       "/" +
+  //       link.index +
+  //       extra;
 
-      let mesg = document.getElementById("message");
-      mesg.innerHTML = "Someting went wrong.";
-      mesg.style.color = "red";
-    },
-  });
-}
+  //   $.ajax({
+  //     url: save_url,
+  //     type: "post",
+  //     data: formData,
+  //     processData: false,
+  //     contentType: false,
+  //     success: function (response) {
+  //       let resp = JSON.parse(response);
+  //       if (links.length - 1 > i) {
+  //         let x = "";
+  //         if (link.type != "add") {
+  //           x = "/" + links[i + 1].param;
+  //         }
+  //         submit(i + 1, values, x, resp.id);
+  //       }
+  //       let mesg = document.getElementById("message");
+  //       mesg.innerHTML = resp.message;
+  //       mesg.style.color = "green";
+  //     },
+  //     error: function (jqXHR, textStatus, errorThrown) {
+  //       console.error(jqXHR);
+  //       console.error(textStatus);
+  //       console.error(errorThrown);
 
-// Pirms formas noformatēšana=================
-//====================================
-for (let i = 0; i < form.length; i++) {
-  let f = form[i];
+  //       let mesg = document.getElementById("message");
+  //       mesg.innerHTML = "Someting went wrong.";
+  //       mesg.style.color = "red";
+  //     },
+  //   });
+  // }
 
-  if (f.type == "fieldset") {
-    for (let j = 0; j < f.items[0].items.length; j++) {
-      for (let k = 0; k < f.items[0].items[j].items.length; k++) {
-        let n_f = f.items[0].items[j].items[k];
-        form_prepare(n_f);
-      }
-    }
-  } else {
-    form_prepare(f);
-  }
-}
+  // // Pirms formas noformatēšana=================
+  // //====================================
+  // for (let i = 0; i < form.length; i++) {
+  //   let f = form[i];
 
-if (value.length > 0) {
-  for (let i = 0; i < Object.keys(schema.properties).length; i++) {
-    let key = Object.keys(schema.properties)[i];
-    let f = schema.properties[key];
+  //   if (f.type == "fieldset") {
+  //     for (let j = 0; j < f.items[0].items.length; j++) {
+  //       for (let k = 0; k < f.items[0].items[j].items.length; k++) {
+  //         let n_f = f.items[0].items[j].items[k];
+  //         form_prepare(n_f);
+  //       }
+  //     }
+  //   } else {
+  //     form_prepare(f);
+  //   }
+  // }
 
-    if (f.type == "boolean") {
-      let flag = value[0][key];
+  // if (value.length > 0) {
+  //   for (let i = 0; i < Object.keys(schema.properties).length; i++) {
+  //     let key = Object.keys(schema.properties)[i];
+  //     let f = schema.properties[key];
 
-      console.log(flag);
-      if (flag == "t") {
-        value[0][key] = true;
-      } else if (flag == "f") {
-        value[0][key] = false;
-      }
-    }
-  }
+  //     if (f.type == "boolean") {
+  //       let flag = value[0][key];
+
+  //       console.log(flag);
+  //       if (flag == "t") {
+  //         value[0][key] = true;
+  //       } else if (flag == "f") {
+  //         value[0][key] = false;
+  //       }
+  //     }
+  //   }
 }
 
 //Formas ģenerēšana ==============================
@@ -356,7 +370,7 @@ $("#test-form").jsonForm({
   form: form,
   value: value[0],
   onSubmitValid: function (values) {
-    submit(0, values, "", null);
+    submit(values, "");
   },
 });
 
