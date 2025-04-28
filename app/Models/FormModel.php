@@ -24,28 +24,49 @@ class FormModel
         return $this->db->query("SELECT * FROM public." . $table_name . " WHERE " . $column_name . " = " . $index)->getRowArray();
     }
 
-    public function insert($table_name, $post)
+    public function insert($table_name, $post, $files)
     {
+        $raw_data = json_decode($post["data"], true);
         $data = [];
 
-        foreach ($post as $key => $value) {
-            if ($value != 'undefined') {
-                $data[$key] = $value;
+        foreach ($raw_data as $row) {
+            if ($row["value"] != 'undefined') {
+                $data[$row["key"]] = $row["value"];
             }
         }
 
         $user = auth()->user();
-        $userId = $user->id ?? null;
-        $timestamp = date('Y-m-d H:i:s');
-
-        $data['created_user_id'] = $userId;
-        $data['created_at'] = $timestamp;
+        $data['created_user_id'] = $user->id ?? null;
+        $data['created_at'] = date('Y-m-d H:i:s');
 
         $query = 'INSERT INTO public.' . $table_name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
         $query = $this->db->query($query, array_values($data));
 
         return $this->db->insertID();
     }
+
+    // public function insert($table_name, $post)
+    // {
+    //     $data = [];
+
+    //     foreach ($post as $key => $value) {
+    //         if ($value != 'undefined') {
+    //             $data[$key] = $value;
+    //         }
+    //     }
+
+    //     $user = auth()->user();
+    //     $userId = $user->id ?? null;
+    //     $timestamp = date('Y-m-d H:i:s');
+
+    //     $data['created_user_id'] = $userId;
+    //     $data['created_at'] = $timestamp;
+
+    //     $query = 'INSERT INTO public.' . $table_name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ');';
+    //     $query = $this->db->query($query, array_values($data));
+
+    //     return $this->db->insertID();
+    // }
 
     public function insertFiles($table_name, $post, $files)
     {

@@ -28,7 +28,7 @@
         let schema = <?php echo $schema; ?>;
         let form = <?php echo $form; ?>;
         let value = <?php echo $values; ?>;
-        let links = <?php echo $links; ?>;
+        let link = "<?php echo $link; ?>";
     </script>
     <script src="http://localhost:8080/js/form.js"></script>
 </body>

@@ -43,14 +43,13 @@ class FormController extends BaseController
 
         $schema = $this->getSchema($table, $results, $allowed_columns);
         $form = $this->getForm($results, "Create", $allowed_columns);
-        $links = $this->getLinks($results, "add", $allowed_columns);
 
         $data = [
             'name' => $table,
             'message' => "",
             'schema' => json_encode($schema),
             'form' => json_encode($form),
-            'links' => json_encode($links),
+            'link' => "http://$_SERVER[HTTP_HOST]/forms/" . $table . "/add",
             'type' => 'post',
             'values' => '{}'
         ];
@@ -64,27 +63,39 @@ class FormController extends BaseController
         $id = null;
 
         $formModel = new FormModel();
-
-        if (count($files) > 0) {
-
-            $id = $formModel->insertFiles($table_name, $post, $files);
-
-        } else {
-
-            $id = $formModel->insert($table_name, $post);
-
-            if ($table_name == "table_metadata") {
-                $tableController = new TableModel();
-                $tableController->addTable($post["table_name"]);
-
-            } else if ($table_name == "column_metadata") {
-                $tableController = new TableModel();
-                $tableController->addColumn($id);
-            }
-        }
+        $id = $formModel->insert($table_name, $post, $files);
 
         return json_encode(['id' => $id, 'message' => "Entry created succsessfully."]);
     }
+
+    // public function create($table_name)
+    // {
+    //     $files = $this->request->getFiles();
+    //     $post = $this->request->getPost();
+    //     $id = null;
+
+    //     $formModel = new FormModel();
+
+    //     if (count($files) > 0) {
+
+    //         $id = $formModel->insertFiles($table_name, $post, $files);
+
+    //     } else {
+
+    //         $id = $formModel->insert($table_name, $post);
+
+    //         if ($table_name == "table_metadata") {
+    //             $tableController = new TableModel();
+    //             $tableController->addTable($post["table_name"]);
+
+    //         } else if ($table_name == "column_metadata") {
+    //             $tableController = new TableModel();
+    //             $tableController->addColumn($id);
+    //         }
+    //     }
+
+    //     return json_encode(['id' => $id, 'message' => "Entry created succsessfully."]);
+    // }
 
     public function edit($table, $index, $column)
     {
