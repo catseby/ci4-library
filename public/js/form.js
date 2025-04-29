@@ -334,7 +334,7 @@ if (value.length > 0) {
 $("#test-form").jsonForm({
   schema: schema,
   form: form,
-  value: value[0],
+  value: value,
   onSubmitValid: function (values) {
     submit(values);
   },

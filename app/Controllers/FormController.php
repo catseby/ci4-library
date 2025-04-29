@@ -34,7 +34,6 @@ class FormController extends BaseController
 
     public function add($table)
     {
-
         $formModel = new FormModel();
         $results = $formModel->getForm($table);
 
@@ -59,47 +58,25 @@ class FormController extends BaseController
     public function create($table_name)
     {
         $files = $this->request->getFiles();
-        $post = $this->request->getPost();
-        $id = null;
+        $post = json_decode($this->request->getPost()["data"], true);
 
         $formModel = new FormModel();
         $id = $formModel->insert($table_name, $post, $files);
 
+        if ($table_name == "table_metadata") {
+            $tableController = new TableModel();
+            $tableController->addTable($post[0]["value"]);
+
+        } else if ($table_name == "column_metadata") {
+            $tableController = new TableModel();
+            $tableController->addColumn($id);
+        }
+
         return json_encode(['id' => $id, 'message' => "Entry created succsessfully."]);
     }
 
-    // public function create($table_name)
-    // {
-    //     $files = $this->request->getFiles();
-    //     $post = $this->request->getPost();
-    //     $id = null;
-
-    //     $formModel = new FormModel();
-
-    //     if (count($files) > 0) {
-
-    //         $id = $formModel->insertFiles($table_name, $post, $files);
-
-    //     } else {
-
-    //         $id = $formModel->insert($table_name, $post);
-
-    //         if ($table_name == "table_metadata") {
-    //             $tableController = new TableModel();
-    //             $tableController->addTable($post["table_name"]);
-
-    //         } else if ($table_name == "column_metadata") {
-    //             $tableController = new TableModel();
-    //             $tableController->addColumn($id);
-    //         }
-    //     }
-
-    //     return json_encode(['id' => $id, 'message' => "Entry created succsessfully."]);
-    // }
-
     public function edit($table, $index, $column)
     {
-
         $formModel = new FormModel();
         $template = $formModel->getForm($table);
 
@@ -108,26 +85,13 @@ class FormController extends BaseController
 
         $schema = $this->getSchema($table, $template, $allowed_columns);
         $form = $this->getForm($template, "Save", $allowed_columns);
-        $links = $this->getLinks($template, "edit", $allowed_columns, $index);
 
-        $joins = $this->getJoins($template, $allowed_columns);
+        $values = $formModel->fetch($table, $column, $index);
 
-
-        $db = db_connect();
-
-        $sql = 'SELECT * FROM public.' . $table . " ";
-        foreach ($joins as $i => $join) {
-            $sql = $sql . "LEFT JOIN public." . $join["table"] . " ON " . $join["table"] . "." . $join["key"] . " = " . $table . ".id ";
-        }
-        $sql = $sql . 'WHERE ' . $table . "." . $column . ' = ' . $index . ";";
-
-        $query = $db->query($sql);
-        $result = $query->getResultArray();
-
-        foreach ($result[0] as $key => $value) {
+        foreach ($values as $key => $value) {
             $decoded = json_decode($value, true);
             if ($decoded != null) {
-                $result[0][$key] = json_decode($value, true);
+                $values[$key] = json_decode($value, true);
             }
         }
 
@@ -136,44 +100,33 @@ class FormController extends BaseController
             'message' => "",
             'schema' => json_encode($schema),
             'form' => json_encode($form),
-            'links' => json_encode($links),
+            'link' => "http://$_SERVER[HTTP_HOST]/forms/" . $table . "/edit/" . $index . "/" . $column,
             'type' => 'post',
-            'values' => json_encode($result)
+            'values' => json_encode($values)
         ];
-
 
         return view("form", $data);
     }
 
-    public function update($name, $index, $column)
+    public function update($table, $index, $column)
     {
-
         $files = $this->request->getFiles();
-        $post = $this->request->getPost();
+        $post = json_decode($this->request->getPost()["data"], true);
 
         $formModel = new FormModel();
 
-        if (count($files) > 0) {
-            $formModel->deleteFiles($name, $column, $index);
+        $row = $formModel->fetch($table, $column, $index);
+        $formModel->update($table, $column, $index, $post, $files);
 
-            $formModel->updateFiles($name, $post, $files);
+        if ($table == "table_metadata") {
+            $tableModel = new TableModel();
+            $tableModel->alterTable($row["table_name"], $post[0]["table_name"]);
 
-        } else {
-
-            $row = $formModel->fetch($name, $column, $index);
-
-            if ($name == "table_metadata") {
-
-                $tableModel = new TableModel();
-                $tableModel->alterTable($row["table_name"], $post["table_name"]);
-
-            } else if ($name == "column_metadata") {
-
-                $tableModel = new TableModel();
-                $tableModel->alterColumn($index, $row);
-
-            }
+        } else if ($table == "column_metadata") {
+            $tableModel = new TableModel();
+            $tableModel->alterColumn($index, $row);
         }
+
         return json_encode(['id' => $index, 'message' => "Entry updated succsessfully."]);
     }
 
@@ -181,9 +134,20 @@ class FormController extends BaseController
     {
         $formModel = new FormModel();
 
+        $columns = $formModel->getForm($name);
+        $file_columns = [];
+
+        foreach ($columns as $col) {
+            if ($col["schema_type"] == "file") {
+                array_push($file_columns, $col["column_name"]);
+            }
+        }
+
+        log_message("debug", json_encode($file_columns));
+
         $row = $formModel->fetch($name, $column, $index);
 
-        $formModel->delete($name, $column, $index);
+        $formModel->delete($name, $column, $index, $file_columns);
 
         if ($name == "table_metadata") {
 
@@ -202,7 +166,7 @@ class FormController extends BaseController
             'message' => "Entry was deleted succsessfully.",
             'schema' => '{}',
             'form' => '{}',
-            'links' => '{}',
+            'link' => '',
             'type' => 'get',
             'values' => '{}'
         ];
@@ -311,11 +275,13 @@ class FormController extends BaseController
                     $db = db_connect();
                     $file_types = [];
 
-                    foreach (json_decode($result["accepted_files"]) as $index => $id) {
-                        $sql = 'SELECT file_type FROM public.file_type_metadata WHERE id = ' . $id;
-                        $file_type = $db->query($sql)->getResultArray();
+                    if ($result["accepted_files"] != null) {
+                        foreach (json_decode($result["accepted_files"]) as $index => $id) {
+                            $sql = 'SELECT file_type FROM public.file_type_metadata WHERE id = ' . $id;
+                            $file_type = $db->query($sql)->getResultArray();
 
-                        array_push($file_types, $file_type[0]['file_type']);
+                            array_push($file_types, $file_type[0]['file_type']);
+                        }
                     }
 
 

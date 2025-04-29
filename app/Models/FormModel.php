@@ -26,10 +26,10 @@ class FormModel
         return null; // Return null if file not found
     }
 
-    private function setFiles($files, $filenames, $old_filenames = null)
+    private function setFiles($files, $filenames = [], $old_filenames = [])
     {
-        if ($old_filenames != null) {
-            foreach ($old_filenames as $old_file) {
+        foreach ($old_filenames as $old_file) {
+            if (file_exists("./uploads/" . $old_file)) {
                 unlink("./uploads/" . $old_file);
             }
         }
@@ -40,6 +40,10 @@ class FormModel
         }
     }
 
+    public function getValue($table_name, $column_name, $index, $value_name)
+    {
+        return $this->db->query("SELECT " . $value_name . " FROM public." . $table_name . " WHERE " . $column_name . " = " . $index)->getRowArray()[$value_name];
+    }
 
     public function getForm($table_name)
     {
@@ -53,17 +57,20 @@ class FormModel
 
     public function insert($table_name, $post, $files)
     {
-        $raw_data = json_decode($post["data"], true);
         $data = [];
 
-        foreach ($raw_data as $row) {
-            if ($row["value"] != 'undefined') {
+        foreach ($post as $row) {
+            if (isset($row["value"])) {
                 if (isset($row["files"]) && $row["files"] == true) {
-                    $this->setFiles($files, $row["files"]);
+                    $this->setFiles($files, $row["value"]);
+                    $data[$row["key"]] = json_encode($row["value"]);
+                } else {
+                    $data[$row["key"]] = $row["value"];
                 }
-                $data[$row["key"]] = $row["value"];
             }
         }
+
+        log_message("debug", json_encode($data));
 
         $user = auth()->user();
         $data['created_user_id'] = $user->id ?? null;
@@ -128,23 +135,28 @@ class FormModel
     //     }
     // }
 
-    public function update($table_name, $column_name, $index, $post)
+    public function update($table_name, $column_name, $index, $post, $files)
     {
         $data = [];
         $keys = [];
-        foreach ($post as $key => $value) {
-            if ($value != 'undefined') {
-                $data[$key] = $value;
-                $keys[] = $key . " = ?";
+
+        foreach ($post as $row) {
+            if (isset($row["value"])) {
+
+                if (isset($row["files"]) && $row["files"] == true) {
+                    $old_filenames = json_decode($this->getValue($table_name, $column_name, $index, $row["key"]));
+                    $this->setFiles($files, $row["value"], $old_filenames);
+                    $data[$row["key"]] = json_encode($row["value"]);
+                } else {
+                    $data[$row["key"]] = $row["value"];
+                }
+                $keys[] = $row["key"] . " = ?";
             }
         }
 
         $user = auth()->user();
-        $userId = $user->id ?? null;
-        $timestamp = date('Y-m-d H:i:s');
-
-        $data['updated_user_id'] = $userId;
-        $data['updated_at'] = $timestamp;
+        $data['updated_user_id'] = $user->id ?? null;
+        $data['updated_at'] = date('Y-m-d H:i:s');
 
         $keys[] = 'updated_user_id = ?';
         $keys[] = 'updated_at = ?';
@@ -153,42 +165,47 @@ class FormModel
         $this->db->query($sql, array_values($data));
     }
 
-    public function updateFiles($table_name, $post, $files)
+    // public function updateFiles($table_name, $post, $files)
+    // {
+    //     foreach ($files['files'] as $file) {
+    //         $filename = $file->getName();
+    //         $file->move('uploads', $filename);
+
+    //         $key = key($file);
+
+    //         $data = [];
+    //         $keys = [];
+    //         foreach ($post as $key => $value) {
+    //             if ($value == "?filename") {
+    //                 $data[$key] = $filename;
+    //             } else if ($value != 'undefined') {
+    //                 $data[$key] = $value;
+    //             }
+    //             $keys[] = $key . " = ?";
+    //         }
+
+    //         $user = auth()->user();
+    //         $userId = $user->id ?? null;
+    //         $timestamp = date('Y-m-d H:i:s');
+
+    //         $data['updated_user_id'] = $userId;
+    //         $data['updated_at'] = $timestamp;
+
+    //         $keys[] = 'updated_user_id = ?';
+    //         $keys[] = 'updated_at = ?';
+
+    //         $query = 'INSERT INTO public.' . $table_name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(', ', array_fill(0, count($data), '?')) . ');';
+    //         $this->db->query($query, array_values($data));
+    //     }
+    // }
+
+    public function delete($table_name, $column_name, $index, $file_columns)
     {
-        foreach ($files['files'] as $file) {
-            $filename = $file->getName();
-            $file->move('uploads', $filename);
-
-            $key = key($file);
-
-            $data = [];
-            $keys = [];
-            foreach ($post as $key => $value) {
-                if ($value == "?filename") {
-                    $data[$key] = $filename;
-                } else if ($value != 'undefined') {
-                    $data[$key] = $value;
-                }
-                $keys[] = $key . " = ?";
-            }
-
-            $user = auth()->user();
-            $userId = $user->id ?? null;
-            $timestamp = date('Y-m-d H:i:s');
-
-            $data['updated_user_id'] = $userId;
-            $data['updated_at'] = $timestamp;
-
-            $keys[] = 'updated_user_id = ?';
-            $keys[] = 'updated_at = ?';
-
-            $query = 'INSERT INTO public.' . $table_name . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(', ', array_fill(0, count($data), '?')) . ');';
-            $this->db->query($query, array_values($data));
+        foreach ($file_columns as $key) {
+            $old_filenames = json_decode($this->getValue($table_name, $column_name, $index, $key));
+            $this->setFiles(null, [], $old_filenames);
         }
-    }
 
-    public function delete($table_name, $column_name, $index)
-    {
         $this->db->query('DELETE FROM public.' . $table_name . ' WHERE ' . $column_name . ' = ' . $index);
     }
 
