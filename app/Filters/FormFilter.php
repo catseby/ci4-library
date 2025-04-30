@@ -103,7 +103,7 @@ class FormFilter implements FilterInterface
     {
         $db = db_connect();
 
-        $column_sql = "SELECT column_name, required, to_foreign FROM public.form_metadata WHERE table_name = '" . $table_name . "' ORDER BY order_position ASC;";
+        $column_sql = "SELECT column_name, required FROM public.form_metadata WHERE table_name = '" . $table_name . "' ORDER BY order_position ASC;";
         $columns_entries = $db->query($column_sql)->getResultArray();
 
         $auth = service('auth');
@@ -114,11 +114,6 @@ class FormFilter implements FilterInterface
         $allowed = [];
 
         foreach ($columns_entries as $j => $column_entry) {
-            if ($column_entry["to_foreign"] == "t") {
-                array_push($allowed, $column_entry['column_name']);
-                continue;
-            }
-
             $column_metadata = $db->query("SELECT required_permissions FROM public.column_metadata WHERE table_name = '" . $table_name . "' AND column_name = '" . $column_entry["column_name"] . "';")->getResultArray()[0];
 
             if ($column_entry["required"] == "t" || !$filter->columnPremissionDenied($column_metadata["required_permissions"], $user)) {

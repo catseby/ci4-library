@@ -118,8 +118,9 @@ function display_selects(fetch_link, f, dyn = false) {
       }
       dropdown.empty();
 
+      dropdown.append('<option value="null"></option>');
+
       for (let i = 0; i < result.length; i++) {
-        // console.log(result[i]);
         let option = $("<option>", {
           value: parseInt(result[i].id),
           text: result[i].item,
@@ -130,7 +131,6 @@ function display_selects(fetch_link, f, dyn = false) {
             value[0][f.key] = [value[0][f.key]];
           }
           for (let j = 0; j < value[0][f.key].length; j++) {
-            // console.log(value[0][f.key]);
             if (
               value[0][f.key][j] == parseInt(result[i].id) ||
               value[0][f.key] == result[i].item
@@ -160,16 +160,20 @@ function form_configure(f) {
       return file;
     }
 
-    console.log(value.length);
-    for (let j = 0; j < value.length; j++) {
-      if (value[j][f.key] != null) {
-        let filename = value[j][f.key];
-        createFileFromUrl("http://localhost:8080/uploads/" + filename, filename)
-          .then((new_file) => {
-            file_arr.push(new_file);
-            display_images(new_file, false);
-          })
-          .catch((error) => console.error("Error creating file:", error));
+    if (value[f.key] != null) {
+      for (let j = 0; j < value[f.key].length; j++) {
+        let filename = value[f.key][j];
+        if (filename != null) {
+          createFileFromUrl(
+            "http://localhost:8080/uploads/" + filename,
+            filename
+          )
+            .then((new_file) => {
+              file_arr.push(new_file);
+              display_images(new_file, false);
+            })
+            .catch((error) => console.error("Error creating file:", error));
+        }
       }
     }
   }
@@ -239,9 +243,13 @@ function submit(values) {
 
     let segment = { key: key, value: [], files: true };
     if (schema.properties[key].type == "file") {
-      for (let j = 0; j < file_arr.length; j++) {
-        formData.append("files[]", file_arr[j]);
-        segment.value.push(file_arr[j].name);
+      if (file_arr.length > 0) {
+        for (let j = 0; j < file_arr.length; j++) {
+          formData.append("files[]", file_arr[j]);
+          segment.value.push(file_arr[j].name);
+        }
+      } else {
+        segment.value = null;
       }
       data.push(segment);
     } else if (schema.properties[key].type == "select") {
@@ -268,7 +276,6 @@ function submit(values) {
     }
   }
 
-  console.log(data);
   formData.append("data", JSON.stringify(data));
 
   $.ajax({

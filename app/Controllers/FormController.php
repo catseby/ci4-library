@@ -414,8 +414,6 @@ class FormController extends BaseController
                 array_push($fieldset["items"][0]["items"], $newTab);
             }
 
-            // log_message("debug", json_encode($fieldset));
-
             array_push($form, $fieldset);
 
         }
@@ -429,70 +427,5 @@ class FormController extends BaseController
         );
 
         return $form;
-    }
-
-    private function getLinks($results, $type, $allowed_columns, $id = null)
-    {
-        $t_links = [];
-        foreach ($results as $index => $result) {
-
-            if (!in_array($result['column_name'], $allowed_columns)) {
-                continue;
-            }
-
-            if ($result["to_foreign"] == 't') {
-
-                if (!array_key_exists($result['f_table'], $t_links)) {
-                    $t_links[$result["f_table"]] = [
-                        'table' => $result['f_table'],
-                        'type' => $type,
-                        'keys' => [$result['column_name']],
-                        'param' => $result['f_primary_key'],
-                        'index' => $id
-                    ];
-                } else {
-                    array_push($t_links[$result['f_table']]['keys'], $result['column_name']);
-                }
-
-            } else {
-                if (!array_key_exists($result['table_name'], $t_links)) {
-                    $t_links[$result["table_name"]] = [
-                        'table' => $result['table_name'],
-                        'type' => $type,
-                        'keys' => [$result['column_name']],
-                        'param' => 'id',
-                        'index' => $id
-                    ];
-                } else {
-                    array_push($t_links[$result['table_name']]['keys'], $result['column_name']);
-                }
-            }
-        }
-
-        $links = [];
-        foreach ($t_links as $key => $value) {
-            array_push($links, $value);
-        }
-
-        return $links;
-    }
-
-    private function getJoins($results, $allowed_columns)
-    {
-        $joins = [];
-        foreach ($results as $key => $result) {
-
-            if (!in_array($result['column_name'], $allowed_columns)) {
-                continue;
-            }
-
-            if ($result["to_foreign"] == "t") {
-                array_push($joins, [
-                    "table" => $result["f_table"],
-                    "key" => $result["f_primary_key"]
-                ]);
-            }
-        }
-        return $joins;
     }
 }
